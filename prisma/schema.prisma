@@ -16,15 +16,15 @@ datasource db {
 model user {
   id               String            @id @default(uuid())
   username         String            @unique
-  email            String
+  email            String            @unique
   password         String
-  fullname         String
+  fullname         String?
   role             Role              @default(USER)
-  mobileNo         Int
+  moblileNo        String?
   isActive         Boolean           @default(true)
   createdDatetime  DateTime          @default(now())
-  updatedBy        String
-  updatedDatetime  DateTime
+  updatedBy        String?
+  updatedDatetime  DateTime?
   isDeleted        Boolean           @default(false)
   userAuthSettings userAuthSettings?
 
@@ -32,17 +32,17 @@ model user {
 }
 
 model userAuthSettings {
-  id                              String   @id @default(uuid())
-  user                            user     @relation(fields: [userId], references: [id])
-  userId                          String   @unique
-  loginRetryLimit                 Int      @default(0)
-  loginReactiveTime               DateTime
-  resetPasswordToken              String
-  expiredTimeOfResetPasswordToken String
-  isDeleted                       Boolean  @default(false)
-  createdDatetime                 DateTime @default(now())
-  updatedBy                       String
-  updatedDatetime                 DateTime
+  id                              String    @id @default(uuid())
+  user                            user      @relation(fields: [userId], references: [id])
+  userId                          String    @unique
+  loginRetryLimit                 Int       @default(0)
+  loginReactiveTime               DateTime?
+  resetPasswordToken              String?
+  expiredTimeOfResetPasswordToken String?
+  isDeleted                       Boolean   @default(false)
+  createdDatetime                 DateTime  @default(now())
+  updatedBy                       String?
+  updatedDatetime                 DateTime?
 
   @@index([resetPasswordToken])
 }
