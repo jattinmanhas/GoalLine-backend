@@ -3,32 +3,34 @@ import { asyncHander } from "../../../utils/handlers/asyncHander";
 import {
   createUser,
   createUserAuthSettings,
-  emailExists,
-  isEmail,
   loginServiceforAdmin,
-  usernameExists,
 } from "../../../services/auth.services";
 import { Role } from "@prisma/client";
+import { usernameExists, emailExists, isEmail } from "../../../utils/common";
 
 export const login = asyncHander(async (req: Request, res: Response) => {
   const username = req.body.username;
+  const email = req.body.email;
   const password = req.body.password;
   let mail = false;
 
-  if (isEmail(username)) {
+  if (!username && email) {
     mail = true;
-    const emailExist: boolean = await emailExists(username);
+    const emailExist: boolean = await emailExists(email);
     if (!emailExist) {
       return res.status(404).json({ message: "User not found ..." });
     }
-  } else {
+  } else if(username && !email) {
     const usernameExist: boolean = await usernameExists(username);
     if (!usernameExist) {
       return res.status(400).json({ message: "User Not found..." });
     }
   }
+  else{
+    return res.status(400).json({ message: "Username and Email Not found..." });
+  }
 
-  const user = await loginServiceforAdmin(username, password, Role.ADMIN, mail);
+  const user = await loginServiceforAdmin(mail ? email: username, password, Role.ADMIN, mail);
   if (user.flag) {
     return res.status(400).json({ message: user.message });
   }
@@ -94,5 +96,5 @@ export const register = asyncHander(async (req: Request, res: Response) => {
 
   return res
     .status(200)
-    .json({ data: user.data, message: "User created successfully..." });
+    .json({ data: user.data, message: "ADMIN User created successfully..." });
 });

@@ -1,11 +1,17 @@
 import { Request, Response, NextFunction } from "express";
-import { AnyZodObject } from "zod";
+import { AnyZodObject, ZodEffects, ZodError } from "zod";
+import { ApiError } from "../utils/handlers/apiError";
+import { errorHandlerMiddleware } from "./errorHandlingMiddleware";
 
-export const validateRequest = (schema: AnyZodObject) => async (req: Request, res: Response, next: NextFunction) => {
+export const validateRequest = (schema: AnyZodObject | ZodEffects<AnyZodObject> ) => async (req: Request, res: Response, next: NextFunction) => {
     try {
         await schema.parseAsync(req.body);
         return next();
     } catch (error) {
-        return res.status(400).json(error);
+        if(error instanceof ZodError){
+            return next(errorHandlerMiddleware(new ApiError(400, error.issues[0].message), req, res, next));
+        }
+
+        return next(errorHandlerMiddleware(new ApiError(500, "An unexpected error occurred"), req, res, next));
     }
 }
