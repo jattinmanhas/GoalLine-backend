@@ -7,7 +7,6 @@ export const errorHandlerMiddleware = (
   res: Response,
   next: NextFunction
 ) => {
-  console.log(err);
   const statusCode = err.statusCode || 500;
   const message = err.message || "Internal Server Error";
 

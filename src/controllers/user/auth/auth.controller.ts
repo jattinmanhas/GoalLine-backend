@@ -11,7 +11,7 @@ import { Role } from "@prisma/client";
 import { emailExists, usernameExists } from "../../../utils/common";
 import { ApiError } from "../../../utils/handlers/apiError";
 import { ApiResponse } from "../../../utils/handlers/apiResponse";
-import { verify } from "jsonwebtoken";
+import client from "../../../config/redisClient";
 
 export const userLogin = asyncHander(async (req: Request, res: Response) => {
   const username = req.body.username;
@@ -45,20 +45,20 @@ export const userLogin = asyncHander(async (req: Request, res: Response) => {
   }
 
   // set tokens to the cookies
-  const token = user.tokens?.token;
   const refreshToken = user.tokens?.refreshToken;
+  const userId = user.data?.id;
 
-  res.cookie("token", token, {
-    httpOnly: true, // prevents JavaScript access
-    secure: false, // set to true if using HTTPS
-    maxAge: 15 * 60 * 1000, // 1 hour in milliseconds
-  });
+  if (refreshToken && userId) {
+    await client.set(userId, refreshToken, {
+      EX: 86400,
+    });
+  } else {
+    throw new ApiError(400, "User ID not Found in the Database...");
+  }
 
-  res.cookie("refresh_token", refreshToken, {
-    httpOnly: true,
-    secure: false, // set to true if using HTTPS
-    maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds
-  });
+  if ("tokens" in user && user.tokens) {
+    delete user.tokens.refreshToken;
+  }
 
   return res
     .status(200)
@@ -114,8 +114,11 @@ export const getUserDetailsFromToken = asyncHander(
       throw new ApiError(401, "No Token Found");
     }
 
-    const user = await getUserFromToken(token, process.env.CLIENT_SECRET as string);
-    console.log(user);
+    const user = await getUserFromToken(
+      token,
+      process.env.CLIENT_SECRET as string
+    );
+
     if (!user) {
       throw new ApiError(401, "Invalid Token");
     }
@@ -130,18 +133,58 @@ export const getUserDetailsFromToken = asyncHander(
 
 export const renewRefreshToken = asyncHander(
   async (req: Request, res: Response, next: NextFunction) => {
-    const token = req.headers.authorization?.split(" ")[1];
+    const tokenId = req.body.refreshId;
 
-    if (!token) {
-      throw new ApiError(401, "No Token Found");
+    const refreshToken = await client.get(tokenId);
+
+    if (!refreshToken) {
+      throw new ApiError(401, "No Refresh Token Found");
     }
 
-    const data = await renewTokens(token);
+    const data = await renewTokens(refreshToken);
+
+    const newRefreshToken = data.tokens?.refreshToken;
+    const userId = data.data?.id;
+
+    if (newRefreshToken && userId) {
+      await client.set(userId, refreshToken, {
+        EX: 86400,
+      });
+    } else {
+      throw new ApiError(400, "User ID not Found in the Database...");
+    }
 
     if(data.flag){
       throw new ApiError(401, data.message as string);
     }
 
+     if ("tokens" in data && data.tokens) {
+       delete data.tokens.refreshToken;
+     }
+
     return res.status(200).json(new ApiResponse(200, data, data.message as string))
   }
 );
+
+export const checkPassportJWT = asyncHander(
+  async (req: Request, res: Response) => {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, "", "JWT USER TOKEN Success"));
+  }
+);
+
+export const userLogout = asyncHander(
+  async(req: Request, res: Response) => {
+    const key = req.body.refreshId.value;
+
+    if(!key){
+      throw new ApiError(400, "Failed to find UserId to logout.")
+    }
+
+    await client.del(key);
+
+    return res.status(200).json(new ApiResponse(200, "", "User Logout Success..."));
+  }
+)
+

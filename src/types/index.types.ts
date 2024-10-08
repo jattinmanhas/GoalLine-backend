@@ -10,7 +10,7 @@ export interface UserPayload {
 
 export interface Tokens {
   token: string;
-  refreshToken: string;
+  refreshToken?: string;
 }
 
 export interface ReturnPayload {

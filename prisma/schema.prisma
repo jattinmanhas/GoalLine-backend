@@ -27,6 +27,8 @@ model user {
   updatedDatetime  DateTime?
   isDeleted        Boolean           @default(false)
   userAuthSettings userAuthSettings?
+  categories       Category[] // A User can create multiple categories
+  products         Product[] // A User can create multiple products
 
   @@index([username, email])
 }
@@ -50,4 +52,45 @@ model userAuthSettings {
 enum Role {
   USER
   ADMIN
+}
+
+model Category {
+  category_id     String    @id @default(uuid())
+  name            String    @db.VarChar(255)
+  description     String?
+  imageUrl        String    @db.VarChar(255)
+  isDeleted       Boolean   @default(false)
+  createdDatetime DateTime  @default(now())
+  createdBy       String
+  updatedBy       String?
+  updatedDatetime DateTime?
+
+  products Product[] // A category can have multiple Products
+  creator  user      @relation(fields: [createdBy], references: [id])
+}
+
+model Product {
+  product_id      String    @id @default(uuid())
+  category_id     String
+  name            String    @db.VarChar(255)
+  description     String?
+  price           Decimal   @db.Decimal(10, 2)
+  stock           Int       @default(0)
+  isDeleted       Boolean   @default(false)
+  createdBy       String
+  createdDatetime DateTime  @default(now())
+  updatedBy       String?
+  updatedDatetime DateTime?
+
+  category Category       @relation(fields: [category_id], references: [category_id])
+  creator  user           @relation(fields: [createdBy], references: [id])
+  images   ProductImage[] // A product can have multiple images.
+}
+
+model ProductImage {
+  image_id   Int    @id @default(autoincrement())
+  product_id String
+  imageUrl   String @db.VarChar(255)
+
+  product Product @relation(fields: [product_id], references: [product_id])
 }
