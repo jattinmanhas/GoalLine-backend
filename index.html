@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload</title>
+</head>
+
+<body>
+    <h1>Upload a file</h1>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="text" name="category_name" id="category_name" placeholder="category_name" />
+        <input type="text" name="category_description" id="category_description" placeholder="category_description" />
+        <input type="file" name="file" id="fileInput" />
+        <button type="submit">Upload</button>
+    </form>
+
+    <p id="message"></p>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        const message = document.getElementById('message');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('fileInput');
+            const category_name = document.getElementById("category_name");
+            const category_description = document.getElementById("category_description");
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('category_name', category_name.value);
+            formData.append('category_description', category_description.value);
+
+            try {
+                const response = await fetch('http://localhost:8080/admin/shop/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                console.log(result);
+                message.textContent = result.message;
+            } catch (error) {
+                message.textContent = 'Upload failed';
+            }
+        });
+    </script>
+</body>
+
+</html>

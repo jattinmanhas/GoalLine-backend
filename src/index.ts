@@ -11,7 +11,6 @@ import jwtAdminStrategy from "./utils/Strategies/jwtAdminStrategy";
 const app : Application = express();
 const port = process.env.PORT || 5000;
 
-
 app.use(json());
 app.use(urlencoded({extended: true}))
 app.use(cors({

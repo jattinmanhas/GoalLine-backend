@@ -58,7 +58,8 @@ model Category {
   category_id     String    @id @default(uuid())
   name            String    @db.VarChar(255)
   description     String?
-  imageUrl        String    @db.VarChar(255)
+  imageName       String?   @db.VarChar(255)
+  eTag            String?   @db.VarChar(100)
   isDeleted       Boolean   @default(false)
   createdDatetime DateTime  @default(now())
   createdBy       String
@@ -90,7 +91,8 @@ model Product {
 model ProductImage {
   image_id   Int    @id @default(autoincrement())
   product_id String
-  imageUrl   String @db.VarChar(255)
+  imageName  String @db.VarChar(255)
+  eTag       String @db.VarChar(100)
 
   product Product @relation(fields: [product_id], references: [product_id])
 }

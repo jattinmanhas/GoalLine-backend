@@ -12,6 +12,8 @@ import { emailExists, usernameExists } from "../../../utils/common";
 import { ApiError } from "../../../utils/handlers/apiError";
 import { ApiResponse } from "../../../utils/handlers/apiResponse";
 import client from "../../../config/redisClient";
+import { decode } from "jsonwebtoken";
+import { UserPayload } from "../../../types/index.types";
 
 export const userLogin = asyncHander(async (req: Request, res: Response) => {
   const username = req.body.username;
@@ -134,6 +136,9 @@ export const getUserDetailsFromToken = asyncHander(
 export const renewRefreshToken = asyncHander(
   async (req: Request, res: Response, next: NextFunction) => {
     const tokenId = req.body.refreshId;
+    if(!tokenId){
+      throw new ApiError(404, "Token Id not Found");
+    }
 
     const refreshToken = await client.get(tokenId);
 
@@ -141,7 +146,9 @@ export const renewRefreshToken = asyncHander(
       throw new ApiError(401, "No Refresh Token Found");
     }
 
-    const data = await renewTokens(refreshToken);
+    const user = decode(refreshToken) as UserPayload;
+
+    const data = await renewTokens(user);
 
     const newRefreshToken = data.tokens?.refreshToken;
     const userId = data.data?.id;

@@ -8,7 +8,9 @@ import {
 } from "../utils/common";
 import { verify } from "jsonwebtoken";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  log: ['query']
+});
 
 /**
  * @description : Create new User
@@ -333,20 +335,8 @@ export async function getUserFromToken(token: string, SECRET: string) {
   }
 }
 
-export async function renewTokens(token: string) {
+export async function renewTokens(user: UserPayload) {
   try {
-    const user = (await getUserFromToken(
-      token,
-      process.env.REFRESH_CLIENT_SECRET as string
-    )) as UserPayload;
-
-    if (!user) {
-      return {
-        flag: true,
-        message: "Invalid Token...",
-      };
-    }
-
     let tokens: Tokens = {
       token: await generateJwtToken(user),
       refreshToken: await generateRefreshToken(user),

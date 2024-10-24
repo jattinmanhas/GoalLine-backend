@@ -7,6 +7,9 @@ import {
 } from "../../../services/auth.services";
 import { Role } from "@prisma/client";
 import { usernameExists, emailExists, isEmail } from "../../../utils/common";
+import client from "../../../config/redisClient";
+import { ApiError } from "../../../utils/handlers/apiError";
+import { ApiResponse } from "../../../utils/handlers/apiResponse";
 
 export const login = asyncHander(async (req: Request, res: Response) => {
   const username = req.body.username;
@@ -18,41 +21,46 @@ export const login = asyncHander(async (req: Request, res: Response) => {
     mail = true;
     const emailExist: boolean = await emailExists(email);
     if (!emailExist) {
-      return res.status(404).json({ message: "User not found ..." });
+      throw new ApiError(404, "User not found ...");
     }
-  } else if(username && !email) {
+  } else if (username && !email) {
     const usernameExist: boolean = await usernameExists(username);
     if (!usernameExist) {
-      return res.status(400).json({ message: "User Not found..." });
+      throw new ApiError(404, "User not found ...");
     }
-  }
-  else{
-    return res.status(400).json({ message: "Username and Email Not found..." });
+  } else {
+    throw new ApiError(404, "Username and Email Not found...");
   }
 
-  const user = await loginServiceforAdmin(mail ? email: username, password, Role.ADMIN, mail);
+  const user = await loginServiceforAdmin(
+    mail ? email : username,
+    password,
+    Role.ADMIN,
+    mail
+  );
   if (user.flag) {
     return res.status(400).json({ message: user.message });
   }
 
   // set tokens to the cookies
-  const token = user.tokens?.token;
-  const refresnToken = user.tokens?.refreshToken;
+  const refreshToken = user.tokens?.refreshToken;
+  const userId = user.data?.id;
 
-  // Set the JWT as an HTTP-only cookie
-  res.cookie("token", token, {
-    httpOnly: true, // prevents JavaScript access
-    secure: false, // set to true if using HTTPS
-    maxAge: 15 * 60 * 1000, // 1 hour in milliseconds
-  });
+  if (refreshToken && userId) {
+    await client.set(userId, refreshToken, {
+      EX: 86400,
+    });
+  } else {
+    throw new ApiError(400, "User ID not Found in the Database...");
+  }
 
-  res.cookie("refresh_token", refresnToken, {
-    httpOnly: true,
-    secure: false, // set to true if using HTTPS
-    maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds
-  });
+  if ("tokens" in user && user.tokens) {
+    delete user.tokens.refreshToken;
+  }
 
-  return res.status(200).json({message: "Successfully Logged In..."})
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Admin Login Success"));
 });
 
 /**
