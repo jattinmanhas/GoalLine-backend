@@ -7,6 +7,7 @@ import { errorHandlerMiddleware } from "./middleware/errorHandlingMiddleware";
 import userJwtStrategy from "./utils/Strategies/jwtUserStrategy";
 import passport from "passport"
 import jwtAdminStrategy from "./utils/Strategies/jwtAdminStrategy";
+import morgan from "morgan";
 
 const app : Application = express();
 const port = process.env.PORT || 5000;
@@ -17,9 +18,15 @@ app.use(cors({
     origin: 'http://localhost:3000/',
     credentials: true
 }))
+app.use(morgan('dev'))
 
 userJwtStrategy(passport);
 jwtAdminStrategy(passport);
+
+// app.post("/admin/shop/addCategory", (req, res, next) => {
+//     console.log(req.file);
+//     return res.status(201).json({message: "Inside artificial route"});
+// })
 
 app.use(router);
 

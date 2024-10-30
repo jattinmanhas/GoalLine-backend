@@ -14,13 +14,13 @@ import { CategorySchema, ProductSchema } from "../../../utils/validation/categor
 
 export const shopAdminRoute = Router();
 
-shopAdminRoute.post("/addCategory", addCategory);
 shopAdminRoute.post(
   "/addCategory",
   passport.authenticate("jwt-admin", { session: false }),
   singleFileUpload("file"),
   createNewCategory
 );
+
 shopAdminRoute.post(
   "/addProduct",
   passport.authenticate("jwt-admin", { session: false }),

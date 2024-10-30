@@ -4,7 +4,6 @@ import {
   productImageMetadata,
   productInsert,
 } from "../types/index.types";
-import { Decimal } from "@prisma/client/runtime/library";
 
 const prisma = new PrismaClient();
 
@@ -131,6 +130,7 @@ export const getAllProductsService = async () => {
         description: true,
         price: true,
         stock: true,
+        Ratings: true,
         isDeleted: true,
         category: {
           select: {
