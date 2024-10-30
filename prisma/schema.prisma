@@ -29,6 +29,7 @@ model user {
   userAuthSettings userAuthSettings?
   categories       Category[] // A User can create multiple categories
   products         Product[] // A User can create multiple products
+  cart             Cart? // A user can have only one cart
 
   @@index([username, email])
 }
@@ -77,16 +78,17 @@ model Product {
   description     String?
   price           Decimal   @db.Decimal(10, 2)
   stock           Int       @default(0)
-  Ratings         Decimal   @db.Decimal(5,1) @default(0.0)
+  Ratings         Decimal   @default(0.0) @db.Decimal(5, 1)
   isDeleted       Boolean   @default(false)
   createdBy       String
   createdDatetime DateTime  @default(now())
   updatedBy       String?
   updatedDatetime DateTime?
 
-  category Category       @relation(fields: [category_id], references: [category_id])
-  creator  user           @relation(fields: [createdBy], references: [id])
-  images   ProductImage[] // A product can have multiple images.
+  category  Category       @relation(fields: [category_id], references: [category_id])
+  creator   user           @relation(fields: [createdBy], references: [id])
+  images    ProductImage[] // A product can have multiple images.
+  CartItems CartItems[]
 }
 
 model ProductImage {
@@ -96,4 +98,23 @@ model ProductImage {
   eTag       String @db.VarChar(100)
 
   product Product @relation(fields: [product_id], references: [product_id])
+}
+
+model Cart {
+  cart_id   Int         @id @default(autoincrement())
+  user_id   String      @unique
+  user      user        @relation(fields: [user_id], references: [id])
+  createdAt DateTime?   @default(now())
+  updatedAt DateTime?
+  items     CartItems[] // A cart can have multiple items
+}
+
+model CartItems {
+  cart_items_id Int       @id @default(autoincrement())
+  cart_id       Int
+  cart          Cart      @relation(fields: [cart_id], references: [cart_id])
+  product_id    String
+  product       Product   @relation(fields: [product_id], references: [product_id])
+  quantity      Int       @default(1)
+  addedAt       DateTime? @default(now())
 }

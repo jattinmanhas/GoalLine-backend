@@ -34,7 +34,7 @@ export async function getSignedForImage(imageName: string) {
   };
 
   const command = new GetObjectCommand(getObjectParams);
-  const url = await getSignedUrl(s3Client, command, {expiresIn: 3600})
+  const url = await getSignedUrl(s3Client, command, {expiresIn: 86400})
 
   return url;
 }

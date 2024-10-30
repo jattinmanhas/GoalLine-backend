@@ -4,6 +4,7 @@ import {
   productImageMetadata,
   productInsert,
 } from "../types/index.types";
+import { number } from "zod";
 
 const prisma = new PrismaClient();
 
@@ -85,9 +86,11 @@ export const insertProductImageMetadata = async (
   }
 };
 
-export const getAllCategoriesService = async () => {
+export const getAllCategoriesService = async (skip: number, take: number) => {
   try {
     const categories = await prisma.category.findMany({
+      skip: Number(skip),
+      take: Number(take),
       select: {
         category_id: true,
         name: true,
@@ -120,9 +123,11 @@ export const getAllCategoriesService = async () => {
   }
 };
 
-export const getAllProductsService = async () => {
+export const getAllProductsService = async (skip: number, take: number) => {
   try {
     const allProducts = await prisma.product.findMany({
+      skip: Number(skip),
+      take: Number(take),
       select: {
         product_id: true,
         category_id: true,
@@ -216,7 +221,7 @@ export const getSingleProductService = async (id: string) => {
   }
 };
 
-export const searchProductsService = async(
+export const searchProductsService = async (
   search: string,
   skip: Number,
   take: Number
@@ -226,8 +231,8 @@ export const searchProductsService = async(
       where: {
         name: {
           contains: search,
-          mode: 'insensitive'
-        }
+          mode: "insensitive",
+        },
       },
       skip: Number(skip),
       take: Number(take),
@@ -270,6 +275,126 @@ export const searchProductsService = async(
     return {
       flag: true,
       message: "Failed To Fetch Products...",
+    };
+  }
+};
+
+export const getUserCartDetails = async (user_id: string) => {
+  try {
+    const cart = await prisma.cart.findUnique({
+      where: {
+        user_id: user_id,
+      },
+    });
+
+    return {
+      flag: false,
+      data: cart,
+      message: "Cart Details fetched successfully...",
+    };
+  } catch (error) {
+    return {
+      flag: true,
+      message: "Failed To Fetch Cart Details...",
+    };
+  }
+};
+
+export const createCartForUser = async (user_id: string) => {
+  try {
+    const createCart = await prisma.cart.create({
+      data: {
+        user_id: user_id,
+        createdAt: new Date(),
+      },
+    });
+
+    return {
+      flag: false,
+      data: createCart,
+      message: "User Cart Created Successfully...",
+    };
+  } catch (error) {
+    return {
+      flag: true,
+      message: "Failed To Create User Cart...",
+    };
+  }
+};
+
+export const createCartItemForUser = async (
+  product_id: string,
+  cart_id: number,
+  quantity: number
+) => {
+  try {
+    const createCartItem = await prisma.cartItems.create({
+      data: {
+        cart_id: Number(cart_id),
+        product_id: product_id,
+        quantity: quantity,
+        addedAt: new Date(),
+      },
+    });
+
+    return {
+      flag: false,
+      data: createCartItem,
+      message: "Item added to the Cart Successfully...",
+    };
+  } catch (error) {
+    return {
+      flag: true,
+      message: "Failed To add item to the Cart...",
+    };
+  }
+};
+
+export const getUserCartItem = async (cart_id: number, product_id: string) => {
+  try {
+    const cartItem = await prisma.cartItems.findFirst({
+      where: {
+        cart_id: cart_id,
+        product_id: product_id,
+      },
+    });
+
+    return {
+      flag: false,
+      data: cartItem,
+      message: "Cart Item fetched successfully...",
+    };
+  } catch (error) {
+    return {
+      flag: true,
+      message: "Failed To Fetch Cart Item...",
+    };
+  }
+};
+
+export const updateCartItemQuantity = async (
+  cart_items_id: number,
+  quantity: number
+) => {
+  try {
+    const updateQuantity = await prisma.cartItems.update({
+      where: {
+        cart_items_id: cart_items_id,
+      },
+      data: {
+        quantity: quantity + 1,
+      },
+    });
+
+    return {
+      flag: false,
+      data: updateQuantity,
+      message: "Cart Item Quantity Updated Successfully...",
+    };
+  } catch (error) {
+    return {
+      flag: true,
+      message: "Failed to update Cart Item Quantity...",
     };
   }
 };
