@@ -4,8 +4,8 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from "uuid";
 import { ApiError } from "../utils/handlers/apiError";
 
-export async function uploadFileToS3(file: Express.Multer.File) {
-  const filename = `category/${uuidv4()}-${file.originalname}`;
+export async function uploadFileToS3(file: Express.Multer.File, folder: string) {
+  const filename = `${folder}/${uuidv4()}-${file.originalname}`;
 
   const params = {
     Bucket: S3_BUCKET,

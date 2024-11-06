@@ -1,15 +1,20 @@
 import { NextFunction, Request, Response } from "express";
 import { asyncHander } from "../../../utils/handlers/asyncHander";
 import {
-  createCartForUser,
   createCartItemForUser,
+  deleteItemFromUserCartService,
   getAllCategoriesService,
+  getAllProductInCategoryService,
   getAllProductsService,
+  GetSignedProductsImageUrl,
   getSingleProductService,
-  getUserCartDetails,
+  getUserAllCartItems,
+  getUserAllCartItemsCount,
   getUserCartItem,
+  searchCategoriesService,
   searchProductsService,
   updateCartItemQuantity,
+  updateCartItemQuantityWithCartItemId,
 } from "../../../services/shop.services";
 import { ApiError } from "../../../utils/handlers/apiError";
 import { ApiResponse } from "../../../utils/handlers/apiResponse";
@@ -92,10 +97,8 @@ export const getAllProducts = asyncHander(
       take = Number(req.query.take);
     }
 
-    const redisFieldKey = `${skip}:${take}`;
-
-    const allProducts = await getAllProductsService(skip, take);
-
+    const redisFieldKey = `${skip}:${take}`;    
+    
     const cachedData = await client.hGet(redisHashKey, redisFieldKey);
     if (cachedData) {
       console.log("cache hit");
@@ -110,28 +113,13 @@ export const getAllProducts = asyncHander(
         );
     }
 
+    const allProducts = await getAllProductsService(skip, take);
     if (allProducts.flag) throw new ApiError(400, allProducts.message);
 
     let productsWithSignedUrl: ProductType[] = [];
 
     if (allProducts.data) {
-      productsWithSignedUrl = await Promise.all(
-        allProducts.data.map(async (product) => {
-          let images: ProductImage[] = [];
-          if (product.images) {
-            images = await Promise.all(
-              product.images.map(async (image) => ({
-                ...image,
-                signedUrl: await getSignedForImage(image.imageName),
-              }))
-            );
-          }
-          return {
-            ...product,
-            images,
-          };
-        })
-      );
+      productsWithSignedUrl = await GetSignedProductsImageUrl(allProducts.data);
     }
 
     await client.hSet(
@@ -164,7 +152,30 @@ export const getProductById = asyncHander(
       throw new ApiError(404, "Product Not found.");
     }
 
-    return res.status(200).json(new ApiResponse(200, product, product.message));
+    return res
+      .status(200)
+      .json(new ApiResponse(200, product.data, product.message));
+  }
+);
+
+export const searchCategories = asyncHander(
+  async (req: Request, res: Response) => {
+    const search = req.query.query as string;
+    const take = Number(req.query.take);
+
+    const searchCat = await searchCategoriesService(search, take);
+
+    if (searchCat.flag) {
+      throw new ApiError(400, searchCat.message);
+    }
+
+    if (searchCat.data == null) {
+      throw new ApiError(404, "Category Not found.");
+    }
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, searchCat.data, searchCat.message));
   }
 );
 
@@ -184,9 +195,17 @@ export const searchProducts = asyncHander(
       throw new ApiError(404, "Product Not found.");
     }
 
+    let productsWithSignedUrl: ProductType[] = [];
+
+    if (searchProducts.data) {
+      productsWithSignedUrl = await GetSignedProductsImageUrl(
+        searchProducts.data
+      );
+    }
+
     return res
       .status(200)
-      .json(new ApiResponse(200, searchProducts.data, searchProducts.message));
+      .json(new ApiResponse(200, productsWithSignedUrl, searchProducts.message));
   }
 );
 
@@ -203,29 +222,15 @@ export const addToCart = asyncHander(
       throw new ApiError(400, "Product Details not found...");
     }
 
-    // check if user have cart...
-    const cartDetails = await getUserCartDetails(user_id);
-    if (cartDetails.flag) {
-      throw new ApiError(400, cartDetails.message);
-    }
-
-    let cart_id = cartDetails.data?.cart_id;
-
-    if (!cartDetails.data) {
-      const createCart = await createCartForUser(user_id);
-      if (createCart.flag) throw new ApiError(400, createCart.message);
-      cart_id = createCart.data?.cart_id;
-    }
-
-    const cartItem = await getUserCartItem(cart_id!, product_id);
+    const cartItem = await getUserCartItem(user_id, product_id);
     if (cartItem.flag) {
       throw new ApiError(400, cartItem.message);
     }
 
     if (cartItem.data) {
-      const updateQty = await updateCartItemQuantity(
+      const updateQty = await updateCartItemQuantityWithCartItemId(
         cartItem.data.cart_items_id,
-        cartItem.data.quantity
+        cartItem.data.quantity + 1
       );
 
       if (updateQty.flag) {
@@ -237,7 +242,7 @@ export const addToCart = asyncHander(
         .json(new ApiResponse(200, updateQty.data, updateQty.message));
     }
 
-    const createCartItem = await createCartItemForUser(product_id, cart_id!, 1);
+    const createCartItem = await createCartItemForUser(product_id, user_id, 1);
 
     if (createCartItem.flag) {
       throw new ApiError(400, createCartItem.message);
@@ -251,21 +256,24 @@ export const addToCart = asyncHander(
 
 export const updateQuantity = asyncHander(
   async (req: Request, res: Response, next: NextFunction) => {
-    const cart_items_id = req.body.cart_items_id;
+    const user_id = req.body.user_id;
+    const product_id = req.body.product_id;
     const quantity = req.body.quantity;
 
-    if (!cart_items_id) {
-      throw new ApiError(400, "Cart Items id Not found");
+    if (!product_id) {
+      throw new ApiError(404, "Product Not found");
+    }
+
+    if(!user_id){
+      throw new ApiError(404, "User Details Not found");
+
     }
 
     if (!quantity) {
-      throw new ApiError(400, "Quantity Not found...");
+      throw new ApiError(404, "Quantity Not found...");
     }
 
-    const updateQty = await updateCartItemQuantity(
-      cart_items_id,
-      quantity
-    );
+    const updateQty = await updateCartItemQuantity(user_id, product_id, quantity);
 
     if (updateQty.flag) {
       throw new ApiError(400, updateQty.message);
@@ -274,5 +282,145 @@ export const updateQuantity = asyncHander(
     return res
       .status(200)
       .json(new ApiResponse(200, updateQty.data, updateQty.message));
+  }
+);
+
+export const getUserCartItemFromUserId = asyncHander(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.params.userId;
+    const redisHashKey = `user:${userId}`;
+    const redisFieldKey = `cart`;
+
+    const cachedData = await client.hGet(redisHashKey, redisFieldKey);
+    if (cachedData) {
+      console.log("cache hit");
+      return res
+        .status(200)
+        .json(
+          new ApiResponse(
+            200,
+            JSON.parse(cachedData),
+            "Successfully Fetched CartItems from redis"
+          )
+        );
+    }
+
+    const cartItems = await getUserAllCartItems(userId);
+    if (cartItems.flag) {
+      throw new ApiError(400, cartItems.message);
+    }
+
+    await client.hSet(redisHashKey, redisFieldKey, JSON.stringify(cartItems));
+    await client.expire(redisHashKey, 86400);
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, cartItems.data, cartItems.message));
+  }
+);
+
+export const deleteItemFromUserCart = asyncHander(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const product_id = req.params.productId;
+    const userId = req.params.userId;
+
+    const redisHashKey = `user:${userId}`;
+    const redisFieldKey = `cart`;
+
+    if (!product_id) {
+      throw new ApiError(400, "Failed to find Product.");
+    }
+
+    const deleteItem = await deleteItemFromUserCartService(userId, product_id);
+    if (deleteItem.flag) {
+      throw new ApiError(400, deleteItem.message);
+    }
+
+    const userCartItems = await getUserAllCartItems(userId);
+    if (userCartItems.flag) {
+      throw new ApiError(400, userCartItems.message);
+    }
+
+    await client.hSet(
+      redisHashKey,
+      redisFieldKey,
+      JSON.stringify(userCartItems)
+    );
+    await client.expire(redisHashKey, 86400);
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, deleteItem.data, deleteItem.message));
+  }
+);
+
+export const getUserCartItemsCount = asyncHander(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.params.userId;
+
+    const count = await getUserAllCartItemsCount(userId);
+    if (count.flag) {
+      throw new ApiError(400, count.message);
+    }
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, count.data, count.message));
+  }
+);
+
+export const getAllProductInCategory = asyncHander(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const category_id = req.params.categoryId;
+    const take = Number(req.query.take) || 10;
+    const skip = Number(req.query.skip) || 0;
+    if (!category_id) {
+      throw new ApiError(404, "Failed to Find Category Id");
+    }
+    const redisHashKey = `category:${category_id}`;
+    const redisFieldKey = `${skip}:${take}`;
+
+    const cachedData = await client.hGet(redisHashKey, redisFieldKey);
+    if (cachedData) {
+      console.log("cache hit");
+      return res
+        .status(200)
+        .json(
+          new ApiResponse(
+            200,
+            JSON.parse(cachedData),
+            "Successfully Fetched Categories from redis"
+          )
+        );
+    }
+
+    const getAllProducts = await getAllProductInCategoryService(
+      category_id,
+      skip,
+      take
+    );
+
+    if (getAllProducts.flag) throw new ApiError(400, getAllProducts.message);
+
+    let productsWithSignedUrl: ProductType[] = [];
+
+    if (getAllProducts.data) {
+      productsWithSignedUrl = await GetSignedProductsImageUrl(
+        getAllProducts.data
+      );
+    }
+
+    await client.hSet(
+      redisHashKey,
+      redisFieldKey,
+      JSON.stringify(productsWithSignedUrl)
+    );
+    await client.expire(redisHashKey, 60 * 60 * 1000);
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, productsWithSignedUrl, getAllProducts.message)
+      );
   }
 );

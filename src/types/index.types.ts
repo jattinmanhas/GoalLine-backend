@@ -92,3 +92,47 @@ export type ProductType = {
   images: ProductImage[];
   creator: Creator;
 };
+
+
+export type SectionImage = {
+  id: string;
+  imageName: string;
+  sectionId: string | null;
+  signedUrl?: string; // Signed URL added after processing
+};
+
+// Type for each blog post section
+export type BlogSection = {
+  id: string;
+  heading: string;
+  paragraph: string | null;
+  order: number;
+  blogId: string;
+  image?: SectionImage | null; // Optional, as some sections may not have images
+};
+
+// Category type for blog post
+type Category = {
+  name: string;
+};
+
+// Author type for blog post
+type Author = {
+  fullname: string | null;
+};
+
+// Type for each blog post
+export type BlogPost = {
+  id: string;
+  title: string;
+  description: string;
+  mainImage: string | null; // Optional field
+  mainImageSignedUrl?: string; // Signed URL for the main image, added after processing
+  createdAt?: Date;
+  updatedAt?: Date;
+  category_id: string;
+  authorId: string;
+  category: Category;
+  sections: BlogSection[];
+  author: Author;
+};

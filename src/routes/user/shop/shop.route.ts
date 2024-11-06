@@ -1,11 +1,16 @@
 import { Router } from "express";
-import { addToCart, getAllCategories, getAllProducts, getProductById, searchProducts, updateQuantity } from "../../../controllers/user/shop/userShop.controller";
+import { addToCart, deleteItemFromUserCart, getAllCategories, getAllProductInCategory, getAllProducts, getProductById, getUserCartItemFromUserId, getUserCartItemsCount, searchCategories, searchProducts, updateQuantity } from "../../../controllers/user/shop/userShop.controller";
 
 export const userShopRoute = Router();
 
 userShopRoute.get("/getAllCategories", getAllCategories);
 userShopRoute.get("/getAllProducts", getAllProducts);
 userShopRoute.get("/product/:id", getProductById);
-userShopRoute.get("/product/", searchProducts);
+userShopRoute.get("/product", searchProducts);
+userShopRoute.get("/categories", searchCategories);
 userShopRoute.post("/addToCart", addToCart);
-userShopRoute.post("/update-quantity", updateQuantity);
+userShopRoute.put("/update-quantity", updateQuantity);
+userShopRoute.get("/userCart/:userId", getUserCartItemFromUserId);
+userShopRoute.delete("/deleteCartItem/:productId/:userId", deleteItemFromUserCart);
+userShopRoute.get("/getCartCount/:userId", getUserCartItemsCount);
+userShopRoute.get("/getAllProductsInCategories/:categoryId", getAllProductInCategory);

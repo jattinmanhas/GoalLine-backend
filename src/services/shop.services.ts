@@ -1,12 +1,14 @@
 import { PrismaClient } from "@prisma/client";
 import {
   categoryInsert,
+  ProductImage,
   productImageMetadata,
   productInsert,
+  ProductType,
 } from "../types/index.types";
-import { number } from "zod";
+import { getSignedForImage } from "./s3Service";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({});
 
 export const createCategory = async (categoryData: categoryInsert) => {
   try {
@@ -208,6 +210,25 @@ export const getSingleProductService = async (id: string) => {
       },
     });
 
+    if (!product) {
+      return {
+        flag: true,
+        data: null,
+        message: "Product not found.",
+      };
+    }
+
+    const imagesWithSignedUrls = await Promise.all(
+      product.images.map(async (image) => ({
+        ...image,
+        signedUrl: await getSignedForImage(image.imageName),
+      }))
+    );
+
+    if(imagesWithSignedUrls){
+      product.images = imagesWithSignedUrls;
+    }
+
     return {
       flag: false,
       data: product,
@@ -243,6 +264,7 @@ export const searchProductsService = async (
         description: true,
         price: true,
         stock: true,
+        Ratings: true,
         isDeleted: true,
         category: {
           select: {
@@ -279,58 +301,45 @@ export const searchProductsService = async (
   }
 };
 
-export const getUserCartDetails = async (user_id: string) => {
+export const searchCategoriesService = async (search: string, take: Number) => {
   try {
-    const cart = await prisma.cart.findUnique({
+    const category = await prisma.category.findMany({
       where: {
-        user_id: user_id,
+        name: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      take: Number(take),
+      select: {
+        category_id: true,
+        name: true,
+        description: true,
       },
     });
 
     return {
       flag: false,
-      data: cart,
-      message: "Cart Details fetched successfully...",
+      data: category,
+      message: "Categories fetched successfully...",
     };
   } catch (error) {
     return {
       flag: true,
-      message: "Failed To Fetch Cart Details...",
-    };
-  }
-};
-
-export const createCartForUser = async (user_id: string) => {
-  try {
-    const createCart = await prisma.cart.create({
-      data: {
-        user_id: user_id,
-        createdAt: new Date(),
-      },
-    });
-
-    return {
-      flag: false,
-      data: createCart,
-      message: "User Cart Created Successfully...",
-    };
-  } catch (error) {
-    return {
-      flag: true,
-      message: "Failed To Create User Cart...",
+      message: "Failed To Fetch Categories...",
     };
   }
 };
 
 export const createCartItemForUser = async (
   product_id: string,
-  cart_id: number,
+  user_id: string,
   quantity: number
 ) => {
   try {
     const createCartItem = await prisma.cartItems.create({
       data: {
-        cart_id: Number(cart_id),
+        user_id: user_id,
         product_id: product_id,
         quantity: quantity,
         addedAt: new Date(),
@@ -350,11 +359,11 @@ export const createCartItemForUser = async (
   }
 };
 
-export const getUserCartItem = async (cart_id: number, product_id: string) => {
+export const getUserCartItem = async (user_id: string, product_id: string) => {
   try {
     const cartItem = await prisma.cartItems.findFirst({
       where: {
-        cart_id: cart_id,
+        user_id: user_id,
         product_id: product_id,
       },
     });
@@ -373,16 +382,18 @@ export const getUserCartItem = async (cart_id: number, product_id: string) => {
 };
 
 export const updateCartItemQuantity = async (
-  cart_items_id: number,
+  user_id:string,
+  product_id : string,
   quantity: number
 ) => {
   try {
-    const updateQuantity = await prisma.cartItems.update({
+    const updateQuantity = await prisma.cartItems.updateMany({
       where: {
-        cart_items_id: cart_items_id,
+        user_id: user_id,
+        product_id : product_id
       },
       data: {
-        quantity: quantity + 1,
+        quantity: quantity,
       },
     });
 
@@ -395,6 +406,207 @@ export const updateCartItemQuantity = async (
     return {
       flag: true,
       message: "Failed to update Cart Item Quantity...",
+    };
+  }
+};
+
+export const updateCartItemQuantityWithCartItemId = async (
+  cart_items_id: number,
+  quantity: number
+) => {
+  try {
+    const updateQuantity = await prisma.cartItems.update({
+      where: {
+        cart_items_id: cart_items_id,
+      },
+      data: {
+        quantity: quantity,
+      },
+    });
+
+    return {
+      flag: false,
+      data: updateQuantity,
+      message: "Cart Item Quantity Updated Successfully...",
+    };
+  } catch (error) {
+    return {
+      flag: true,
+      message: "Failed to update Cart Item Quantity...",
+    };
+  }
+};
+
+export const getUserAllCartItems = async (user_id: string) => {
+  try {
+    const cartItem = await prisma.cartItems.findMany({
+      where: {
+        user_id: user_id,
+      },
+      select: {
+        cart_items_id: true,
+        quantity: true,
+        user_id: true,
+        product: {
+          select: {
+            name: true,
+            product_id: true,
+            price: true,
+            stock: true,
+            images: {
+              select: {
+                imageName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const cartItemsWithSignedUrls = await Promise.all(
+      cartItem.map(async (item) => ({
+        ...item,
+        product: {
+          ...item.product,
+          images: await Promise.all(
+            item.product.images.map(async (image) => ({
+              ...image,
+              signedUrl: await getSignedForImage(image.imageName),
+            }))
+          ),
+        },
+      }))
+    );
+
+    return {
+      flag: false,
+      data: cartItemsWithSignedUrls,
+      message: "Cart Items fetched successfully...",
+    };
+  } catch (error) {
+    return {
+      flag: true,
+      message: "Failed To Fetch Cart Items...",
+    };
+  }
+};
+
+export const deleteItemFromUserCartService = async (userId: string, productId: string) => {
+  try {
+    const deleteItem = await prisma.cartItems.deleteMany({
+      where: {
+        user_id: userId,
+        product_id : productId
+      },
+    });
+
+    return {
+      flag: false,
+      data: deleteItem,
+      message: "Cart Item Deleted Successfully...",
+    };
+  } catch (error) {
+    return {
+      flag: true,
+      message: "Failed to Delete Cart Item Quantity...",
+    };
+  }
+};
+
+export const getUserAllCartItemsCount = async (user_id: string) => {
+  try {
+    const cartItemCount = await prisma.cartItems.count({
+      where: {
+        user_id: user_id,
+      },
+    });
+
+    return {
+      flag: false,
+      data: cartItemCount,
+      message: "Cart Items Count fetched successfully...",
+    };
+  } catch (error) {
+    return {
+      flag: true,
+      message: "Failed To Fetch Cart Items Count...",
+    };
+  }
+};
+
+export const GetSignedProductsImageUrl = async(allProducts: ProductType[]) => {
+  return await Promise.all(
+    allProducts.map(async (product) => {
+      let images: ProductImage[] = [];
+      if (product.images) {
+        images = await Promise.all(
+          product.images.map(async (image) => ({
+            ...image,
+            signedUrl: await getSignedForImage(image.imageName),
+          }))
+        );
+      }
+      return {
+        ...product,
+        images,
+      };
+    })
+  );
+}
+
+export const getAllProductInCategoryService = async (
+  category_id: string,
+  skip: number,
+  take: number
+) => {
+  try {
+    const userDetails = await prisma.product.findMany({
+      where: {
+        category_id: category_id,
+      },
+      skip: Number(skip),
+      take: Number(take),
+      select: {
+        product_id: true,
+        category_id: true,
+        name: true,
+        description: true,
+        price: true,
+        stock: true,
+        Ratings: true,
+        isDeleted: true,
+        category: {
+          select: {
+            name: true,
+            description: true,
+          },
+        },
+        images: {
+          select: {
+            image_id: true,
+            imageName: true,
+            eTag: true,
+          },
+        },
+        creator: {
+          select: {
+            username: true,
+            fullname: true,
+          },
+        },
+      },
+    });
+
+    return {
+      flag: false,
+      data: userDetails,
+      message: "Successfully Fetched All Products in Single Category.",
+    };
+  } catch (error) {
+    return {
+      flag: true,
+      data: null,
+      message: "Failed to Fetch All Products in Single Category.",
     };
   }
 };

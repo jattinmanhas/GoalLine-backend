@@ -7,9 +7,10 @@ import {
   getDifferenceOfTwoDatesInMinutes,
 } from "../utils/common";
 import { verify } from "jsonwebtoken";
+import { asyncHander } from "../utils/handlers/asyncHander";
 
 const prisma = new PrismaClient({
-  log: ['query']
+  log: ["query"],
 });
 
 /**
@@ -287,7 +288,8 @@ export const loginServiceForUser = async (
   username: string,
   password: string,
   role: Role,
-  isMail: boolean
+  isMail: boolean,
+  isGoogle: boolean = false
 ) => {
   let user;
 
@@ -304,14 +306,18 @@ export const loginServiceForUser = async (
     };
   }
 
-  const isPasswordMatch = await checkPasswordCorrect(password, user.password!);
-  if (!isPasswordMatch) {
-    return {
-      flag: true,
-      message: `Incorrect Password...`,
-    };
+  if (!isGoogle) {
+    const isPasswordMatch = await checkPasswordCorrect(
+      password,
+      user.password!
+    );
+    if (!isPasswordMatch) {
+      return {
+        flag: true,
+        message: `Incorrect Password...`,
+      };
+    }
   }
-
   let tokens: Tokens = {
     token: await generateJwtToken(user),
     refreshToken: await generateRefreshToken(user),
@@ -348,7 +354,6 @@ export async function renewTokens(user: UserPayload) {
       data: user,
       message: "New Access Tokens Generated Successfully...",
     };
-
   } catch (error) {
     return {
       flag: true,
@@ -356,3 +361,35 @@ export async function renewTokens(user: UserPayload) {
     };
   }
 }
+
+export const getCompleteUserDetailsService = async (userId: string) => {
+  try {
+    const userDetails = await prisma.user.findFirst({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        fullname: true,
+        moblileNo: true,
+        role: true,
+        userAddress: {},
+      },
+    });
+
+    return {
+      flag: false,
+      data: userDetails,
+      message: "Successfully Fetched User Details",
+    };
+  } catch (error) {
+    return {
+      flag: true,
+      data: null,
+      message: "Failed to Fetch User Details",
+    };
+  }
+};
+

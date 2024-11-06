@@ -29,9 +29,25 @@ model user {
   userAuthSettings userAuthSettings?
   categories       Category[] // A User can create multiple categories
   products         Product[] // A User can create multiple products
-  cart             Cart? // A user can have only one cart
+  cartItem         CartItems[] // A user can have multiple products in cart
+  userAddress      userAddress[]
+  Blog             Blog[]
 
   @@index([username, email])
+}
+
+model userAddress {
+  userAddressId Int      @id @default(autoincrement())
+  userId        String
+  user          user     @relation(fields: [userId], references: [id])
+  street        String
+  city          String
+  state         String?
+  postalCode    String
+  country       String
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model userAuthSettings {
@@ -69,6 +85,7 @@ model Category {
 
   products Product[] // A category can have multiple Products
   creator  user      @relation(fields: [createdBy], references: [id])
+  Blog     Blog[]
 }
 
 model Product {
@@ -79,6 +96,7 @@ model Product {
   price           Decimal   @db.Decimal(10, 2)
   stock           Int       @default(0)
   Ratings         Decimal   @default(0.0) @db.Decimal(5, 1)
+  tag             String?
   isDeleted       Boolean   @default(false)
   createdBy       String
   createdDatetime DateTime  @default(now())
@@ -87,7 +105,7 @@ model Product {
 
   category  Category       @relation(fields: [category_id], references: [category_id])
   creator   user           @relation(fields: [createdBy], references: [id])
-  images    ProductImage[] // A product can have multiple images.
+  images    ProductImage[]
   CartItems CartItems[]
 }
 
@@ -100,21 +118,45 @@ model ProductImage {
   product Product @relation(fields: [product_id], references: [product_id])
 }
 
-model Cart {
-  cart_id   Int         @id @default(autoincrement())
-  user_id   String      @unique
-  user      user        @relation(fields: [user_id], references: [id])
-  createdAt DateTime?   @default(now())
-  updatedAt DateTime?
-  items     CartItems[] // A cart can have multiple items
-}
-
 model CartItems {
   cart_items_id Int       @id @default(autoincrement())
-  cart_id       Int
-  cart          Cart      @relation(fields: [cart_id], references: [cart_id])
+  user_id       String
   product_id    String
+  user          user      @relation(fields: [user_id], references: [id])
   product       Product   @relation(fields: [product_id], references: [product_id])
   quantity      Int       @default(1)
   addedAt       DateTime? @default(now())
+
+  @@unique([user_id, product_id])
+}
+
+model Blog {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  sections    Section[]
+  mainImage   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  category_id String
+  category    Category  @relation(fields: [category_id], references: [category_id])
+  author      user      @relation(fields: [authorId], references: [id])
+  authorId    String
+}
+
+model Section {
+  id        String  @id @default(uuid())
+  heading   String // Smaller heading for each section
+  paragraph String? // Paragraph content for the section
+  order     Int // Order to display sections in sequence
+  blog      Blog    @relation(fields: [blogId], references: [id])
+  blogId    String
+  image     Image? // Each section can have one image
+}
+
+model Image {
+  id        String   @id @default(uuid())
+  imageName String // URL of the image, potentially a signed URL if hosted on S3
+  section   Section? @relation(fields: [sectionId], references: [id])
+  sectionId String?  @unique
 }

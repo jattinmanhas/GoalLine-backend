@@ -3,6 +3,8 @@ import { asyncHander } from "../../../utils/handlers/asyncHander";
 import {
   createUser,
   createUserAuthSettings,
+  getCompleteUserDetailsService,
+  getUser,
   getUserFromToken,
   loginServiceForUser,
   renewTokens,
@@ -136,7 +138,7 @@ export const getUserDetailsFromToken = asyncHander(
 export const renewRefreshToken = asyncHander(
   async (req: Request, res: Response, next: NextFunction) => {
     const tokenId = req.body.refreshId;
-    if(!tokenId){
+    if (!tokenId) {
       throw new ApiError(404, "Token Id not Found");
     }
 
@@ -161,15 +163,17 @@ export const renewRefreshToken = asyncHander(
       throw new ApiError(400, "User ID not Found in the Database...");
     }
 
-    if(data.flag){
+    if (data.flag) {
       throw new ApiError(401, data.message as string);
     }
 
-     if ("tokens" in data && data.tokens) {
-       delete data.tokens.refreshToken;
-     }
+    if ("tokens" in data && data.tokens) {
+      delete data.tokens.refreshToken;
+    }
 
-    return res.status(200).json(new ApiResponse(200, data, data.message as string))
+    return res
+      .status(200)
+      .json(new ApiResponse(200, data, data.message as string));
   }
 );
 
@@ -181,17 +185,86 @@ export const checkPassportJWT = asyncHander(
   }
 );
 
-export const userLogout = asyncHander(
-  async(req: Request, res: Response) => {
-    const key = req.body.refreshId.value;
+export const userLogout = asyncHander(async (req: Request, res: Response) => {
+  const key = req.body.refreshId.value;
 
-    if(!key){
-      throw new ApiError(400, "Failed to find UserId to logout.")
+  if (!key) {
+    throw new ApiError(400, "Failed to find UserId to logout.");
+  }
+
+  await client.del(key);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "", "User Logout Success..."));
+});
+
+export const googleLoginForUser = asyncHander(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const email = req.body.email;
+    const name = req.body.name;
+    const password = "";
+
+    let userData = await getUser(email, false, "email", Role.USER);
+    if (!userData) {
+      let username = email.split("@")[0];
+      const user = await createUser(username, email, password, name, Role.USER);
+
+      if (user.flag) {
+        throw new ApiError(400, "Failed to create New user");
+      }
     }
 
-    await client.del(key);
+    const user = await loginServiceForUser(
+      email,
+      password,
+      Role.USER,
+      true,
+      true
+    );
+    if (user.flag) {
+      throw new ApiError(400, user.message);
+    }
 
-    return res.status(200).json(new ApiResponse(200, "", "User Logout Success..."));
+    // set tokens to the cookies
+    const refreshToken = user.tokens?.refreshToken;
+    const userId = user.data?.id;
+
+    if (refreshToken && userId) {
+      await client.set(userId, refreshToken, {
+        EX: 86400,
+      });
+    } else {
+      throw new ApiError(400, "User ID not Found in the Database...");
+    }
+
+    if ("tokens" in user && user.tokens) {
+      delete user.tokens.refreshToken;
+    }
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, user, "Login Successful..."));
   }
-)
+);
 
+export const getCompleteUserDetails = asyncHander(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.params.userId;
+    if(!userId){
+      throw new ApiError(404, "User Id Not Found...");
+    }
+
+    const userDetails = await getCompleteUserDetailsService(userId);
+    
+    if(userDetails.flag){
+      throw new ApiError(400, userDetails.message);
+    }
+
+    return res.status(200).json(new ApiResponse(200, userDetails.data, userDetails.message));
+  }
+);
+
+ export const UpdateUserDetails = asyncHander(async(req: Request, res: Response, next: NextFunction) => {
+  console.log(req.body);
+})

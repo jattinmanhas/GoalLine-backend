@@ -14,6 +14,7 @@ import {
   createProduct,
   insertProductImageMetadata,
 } from "../../../services/shop.services";
+import client from "../../../config/redisClient";
 
 export const addCategory = asyncHander(async (req: Request, res: Response) => {
   res.send("Add Category from the db....");
@@ -33,7 +34,7 @@ export const createNewCategory = asyncHander(
     let filename = "";
 
     if (req.file) {
-      const fileKey = await uploadFileToS3(req.file);
+      const fileKey = await uploadFileToS3(req.file, "category");
       etag = fileKey.etag!;
       filename = fileKey.imageName;
     }
@@ -52,6 +53,8 @@ export const createNewCategory = asyncHander(
     if (category.flag) {
       throw new ApiError(400, category.message);
     }
+
+    await client.del("categories");
 
     return res
       .status(200)
@@ -75,7 +78,7 @@ export const createNewProduct = asyncHander(
 
     if (req.files) {
       for (const file of files) {
-        const fileKey = await uploadFileToS3(file);
+        const fileKey = await uploadFileToS3(file, "products");
         uploadedFiles.push(fileKey);
       }
     }
@@ -108,6 +111,8 @@ export const createNewProduct = asyncHander(
         throw new ApiError(400, imageMeta.message);
       }
     }
+
+    await client.del("products");
 
     return res
       .status(200)
