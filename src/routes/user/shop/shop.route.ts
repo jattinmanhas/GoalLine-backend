@@ -1,5 +1,6 @@
-import { Router } from "express";
-import { addToCart, deleteItemFromUserCart, getAllCategories, getAllProductInCategory, getAllProducts, getProductById, getUserCartItemFromUserId, getUserCartItemsCount, searchCategories, searchProducts, updateQuantity } from "../../../controllers/user/shop/userShop.controller";
+import { Router, json, raw } from "express";
+import { addToCart, createStripeSession, deleteItemFromUserCart, getAllCategories, getAllProductInCategory, getAllProducts, getProductById, getUserCartItemFromUserId, getUserCartItemsCount, searchCategories, searchProducts, updateQuantity } from "../../../controllers/user/shop/userShop.controller";
+import { roleBasedPassportStrategy } from "../../../middleware/authMiddleware";
 
 export const userShopRoute = Router();
 
@@ -14,3 +15,4 @@ userShopRoute.get("/userCart/:userId", getUserCartItemFromUserId);
 userShopRoute.delete("/deleteCartItem/:productId/:userId", deleteItemFromUserCart);
 userShopRoute.get("/getCartCount/:userId", getUserCartItemsCount);
 userShopRoute.get("/getAllProductsInCategories/:categoryId", getAllProductInCategory);
+userShopRoute.post("/create-checkout-session", roleBasedPassportStrategy ,createStripeSession);

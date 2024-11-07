@@ -23,8 +23,15 @@ import {
   categoryType,
   ProductImage,
   ProductType,
+  UserPayload,
 } from "../../../types/index.types";
 import client from "../../../config/redisClient";
+import Stripe from "stripe";
+
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new ApiError(400, "Stripe Key not found.");
+}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const getAllCategories = asyncHander(
   async (req: Request, res: Response) => {
@@ -97,8 +104,8 @@ export const getAllProducts = asyncHander(
       take = Number(req.query.take);
     }
 
-    const redisFieldKey = `${skip}:${take}`;    
-    
+    const redisFieldKey = `${skip}:${take}`;
+
     const cachedData = await client.hGet(redisHashKey, redisFieldKey);
     if (cachedData) {
       console.log("cache hit");
@@ -205,7 +212,9 @@ export const searchProducts = asyncHander(
 
     return res
       .status(200)
-      .json(new ApiResponse(200, productsWithSignedUrl, searchProducts.message));
+      .json(
+        new ApiResponse(200, productsWithSignedUrl, searchProducts.message)
+      );
   }
 );
 
@@ -264,16 +273,19 @@ export const updateQuantity = asyncHander(
       throw new ApiError(404, "Product Not found");
     }
 
-    if(!user_id){
+    if (!user_id) {
       throw new ApiError(404, "User Details Not found");
-
     }
 
     if (!quantity) {
       throw new ApiError(404, "Quantity Not found...");
     }
 
-    const updateQty = await updateCartItemQuantity(user_id, product_id, quantity);
+    const updateQty = await updateCartItemQuantity(
+      user_id,
+      product_id,
+      quantity
+    );
 
     if (updateQty.flag) {
       throw new ApiError(400, updateQty.message);
@@ -422,5 +434,48 @@ export const getAllProductInCategory = asyncHander(
       .json(
         new ApiResponse(200, productsWithSignedUrl, getAllProducts.message)
       );
+  }
+);
+
+export const createStripeSession = asyncHander(
+  async (req: Request, res: Response, next: NextFunction) => {
+    let products = req.body.products;
+    let user = (req.user) as UserPayload;
+
+    const metadata = {
+      email: user.email,
+      productIds: products
+        .map((product: any) => `${product.product_id}:${product.quantity}`)
+        .join(","), // Format: "productId1:quantity1,productId2:quantity2"
+      userId: user.id,
+    };
+
+    console.log(metadata)
+
+    const lineItems = products.map((product: any) => ({
+      price_data: {
+        currency: "usd",
+        product_data: {
+          name: product.name,
+          images: [product.images[0].signedUrl],
+        },
+        unit_amount: Number(product.price) * 100,
+      },
+      quantity: product.quantity,
+    }));
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: lineItems,
+      customer_email: user.email,
+      mode: "payment",
+      metadata: metadata,
+      success_url: "http://localhost:3000/shop/payments/success",
+      cancel_url: "http://localhost:3000/shop/payments/cancel",
+    });
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, session.id, "Payment Successful"));
   }
 );

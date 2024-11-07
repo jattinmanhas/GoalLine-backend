@@ -8,6 +8,7 @@ import {
 } from "../utils/common";
 import { verify } from "jsonwebtoken";
 import { asyncHander } from "../utils/handlers/asyncHander";
+import { getSignedForImage } from "./s3Service";
 
 const prisma = new PrismaClient({
   log: ["query"],
@@ -373,10 +374,162 @@ export const getCompleteUserDetailsService = async (userId: string) => {
         email: true,
         username: true,
         fullname: true,
-        moblileNo: true,
+        mobileNo: true,
+        image: true,
         role: true,
-        userAddress: {},
+        userAddress: {
+          include: {},
+        },
       },
+    });
+
+    let userWithSignedUrl = userDetails
+      ? { ...userDetails, signedUrl: "" }
+      : null;
+
+    if (userWithSignedUrl?.image) {
+      userWithSignedUrl.signedUrl = await getSignedForImage(
+        userWithSignedUrl.image
+      );
+    }
+
+    return {
+      flag: false,
+      data: userWithSignedUrl,
+      message: "Successfully Fetched User Details",
+    };
+  } catch (error) {
+    return {
+      flag: true,
+      data: null,
+      message: "Failed to Fetch User Details",
+    };
+  }
+};
+
+export async function updateUserDetailsService(
+  id: string,
+  email: string,
+  fullname: string,
+  mobileNo: string,
+  filename: string
+) {
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { id }, // Update based on unique ID
+      data: {
+        email: email,
+        fullname: fullname,
+        mobileNo: mobileNo,
+        image: filename,
+      },
+    });
+
+    return {
+      flag: false,
+      message: "User Details Updated Successfully",
+      data: updatedUser,
+    };
+  } catch (error) {
+    return {
+      message: "Error updating user:",
+      error,
+      flag: true,
+      data: null,
+    };
+  }
+}
+
+export async function updateUserAddressService(
+  userAddressId: number,
+  street: string,
+  city: string,
+  state: string,
+  postalCode: string,
+  country: string,
+  isDefault: boolean
+) {
+  try {
+    const updatedAddress = await prisma.userAddress.update({
+      where: {
+        userAddressId, // Unique identifier for the address to update
+      },
+      data: {
+        street,
+        city,
+        state,
+        postalCode,
+        country,
+        isDefault,
+      },
+    });
+
+    return {
+      flag: false,
+      message: "User Address Details Updated Successfully",
+      data: updatedAddress,
+    };
+  } catch (error) {
+    return {
+      message: "Error updating user:",
+      error,
+      flag: true,
+      data: null,
+    };
+  }
+}
+
+export async function createUserAddressService(
+  userId: string,
+  street: string,
+  city: string,
+  state: string,
+  postalCode: string,
+  country: string,
+  isDefault: boolean
+) {
+  try {
+    const newAddress = await prisma.userAddress.create({
+      data: {
+        userId,
+        street,
+        city,
+        state,
+        postalCode,
+        country,
+        isDefault: isDefault ?? false,
+      },
+    });
+
+    return {
+      flag: false,
+      message: "User Address Details Updated Successfully",
+      data: newAddress,
+    };
+  } catch (error) {
+    return {
+      message: "Error updating user:",
+      error,
+      flag: true,
+      data: null,
+    };
+  }
+}
+
+export const getUserAddressFromUserId = async (userId: string) => {
+  try {
+    const userDetails = await prisma.userAddress.findFirst({
+      where: {
+        userId: userId,
+      },
+      include : {
+        user : {
+          select : {
+            username : true,
+            fullname : true,
+          }
+        }
+      }
     });
 
     return {
@@ -392,4 +545,3 @@ export const getCompleteUserDetailsService = async (userId: string) => {
     };
   }
 };
-

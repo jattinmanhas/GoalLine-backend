@@ -15,6 +15,7 @@ const fileFilter = (
     "image/jpg",
     "image/gif",
   ];
+
   if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true); // Accept file
   } else {

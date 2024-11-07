@@ -7,6 +7,7 @@ import {
   ProductType,
 } from "../types/index.types";
 import { getSignedForImage } from "./s3Service";
+import Stripe from "stripe";
 
 const prisma = new PrismaClient({});
 
@@ -225,7 +226,7 @@ export const getSingleProductService = async (id: string) => {
       }))
     );
 
-    if(imagesWithSignedUrls){
+    if (imagesWithSignedUrls) {
       product.images = imagesWithSignedUrls;
     }
 
@@ -382,15 +383,15 @@ export const getUserCartItem = async (user_id: string, product_id: string) => {
 };
 
 export const updateCartItemQuantity = async (
-  user_id:string,
-  product_id : string,
+  user_id: string,
+  product_id: string,
   quantity: number
 ) => {
   try {
     const updateQuantity = await prisma.cartItems.updateMany({
       where: {
         user_id: user_id,
-        product_id : product_id
+        product_id: product_id,
       },
       data: {
         quantity: quantity,
@@ -491,12 +492,15 @@ export const getUserAllCartItems = async (user_id: string) => {
   }
 };
 
-export const deleteItemFromUserCartService = async (userId: string, productId: string) => {
+export const deleteItemFromUserCartService = async (
+  userId: string,
+  productId: string
+) => {
   try {
     const deleteItem = await prisma.cartItems.deleteMany({
       where: {
         user_id: userId,
-        product_id : productId
+        product_id: productId,
       },
     });
 
@@ -534,7 +538,7 @@ export const getUserAllCartItemsCount = async (user_id: string) => {
   }
 };
 
-export const GetSignedProductsImageUrl = async(allProducts: ProductType[]) => {
+export const GetSignedProductsImageUrl = async (allProducts: ProductType[]) => {
   return await Promise.all(
     allProducts.map(async (product) => {
       let images: ProductImage[] = [];
@@ -552,7 +556,7 @@ export const GetSignedProductsImageUrl = async(allProducts: ProductType[]) => {
       };
     })
   );
-}
+};
 
 export const getAllProductInCategoryService = async (
   category_id: string,
@@ -610,3 +614,63 @@ export const getAllProductInCategoryService = async (
     };
   }
 };
+
+export async function createOrder(
+  customerId: string,
+  totalAmount: number,
+  currency: string,
+  status: string
+) {
+  return await prisma.order.create({
+    data: {
+      customerId,
+      totalAmount,
+      currency,
+      status,
+    },
+  });
+}
+
+export async function createPayment(
+  orderId: string,
+  paymentId: string,
+  currency: string,
+  status: string
+) {
+  return await prisma.payment.create({
+    data: {
+      orderId,
+      paymentId,
+      currency,
+      status,
+    },
+  });
+}
+
+export async function createOrderItem(
+  orderId: string,
+  productId: string,
+  quantity: number
+) {
+  return await prisma.orderItem.create({
+    data: {
+      orderId,
+      productId,
+      quantity,
+    },
+  });
+}
+
+export async function clearCartForUser(userId: string) {
+  try {
+    // Delete all CartItems associated with the user
+    return await prisma.cartItems.deleteMany({
+      where: {
+          user_id: userId,
+      },
+    });
+  } catch (error) {
+    console.error(`Error clearing cart for user with ID: ${userId}`, error);
+    throw error;
+  }
+}

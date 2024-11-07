@@ -20,7 +20,8 @@ model user {
   password         String
   fullname         String?
   role             Role              @default(USER)
-  moblileNo        String?
+  image            String?
+  mobileNo         String?
   isActive         Boolean           @default(true)
   createdDatetime  DateTime          @default(now())
   updatedBy        String?
@@ -32,6 +33,7 @@ model user {
   cartItem         CartItems[] // A user can have multiple products in cart
   userAddress      userAddress[]
   Blog             Blog[]
+  order            Order[]
 
   @@index([username, email])
 }
@@ -159,4 +161,48 @@ model Image {
   imageName String // URL of the image, potentially a signed URL if hosted on S3
   section   Section? @relation(fields: [sectionId], references: [id])
   sectionId String?  @unique
+}
+
+model Order {
+  id           String       @id @default(uuid()) // Primary key
+  createdAt    DateTime     @default(now()) // Timestamp
+  updatedAt    DateTime?    @updatedAt
+  status       String       // Status of the order, e.g., 'completed', 'pending', 'cancelled'
+  totalAmount  Int          // Total order amount in cents
+  currency     String       // Currency used for the order, e.g., 'usd'
+  customerId   String       // Customer ID reference
+  user         user         @relation(fields: [customerId], references: [id])
+  
+  // Relation Fields
+  orderItems   OrderItem[]  // Related order items
+  payment      Payment?     @relation("OrderPayment") // Relation name added
+
+  @@map("Orders") // Optional: Map model to `orders` table in database
+}
+
+model Payment {
+  id           String       @id @default(uuid()) // Primary key
+  paymentId    String       @unique // Unique Stripe payment ID or another reference
+  currency     String       // Currency, e.g., 'usd'
+  status       String       // Payment status, e.g., 'succeeded', 'failed'
+  createdAt    DateTime     @default(now()) // Payment creation timestamp
+  updatedAt    DateTime     @updatedAt
+  orderId      String?      @unique // Foreign key to Order
+
+  // Relation Fields
+  order        Order?       @relation("OrderPayment", fields: [orderId], references: [id])
+
+  @@map("Payments") // Optional: Map model to `payments` table in database
+}
+
+model OrderItem {
+  id        String @id @default(uuid()) // Primary key
+  quantity  Int // Quantity of the product ordered
+  productId String // Reference to product ID
+  orderId   String // Foreign key to Order
+
+  // Relation Fields
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("OrderItems")
 }

@@ -2,12 +2,16 @@ import { NextFunction, Request, Response } from "express";
 import { asyncHander } from "../../../utils/handlers/asyncHander";
 import {
   createUser,
+  createUserAddressService,
   createUserAuthSettings,
   getCompleteUserDetailsService,
   getUser,
+  getUserAddressFromUserId,
   getUserFromToken,
   loginServiceForUser,
   renewTokens,
+  updateUserAddressService,
+  updateUserDetailsService,
 } from "../../../services/auth.services";
 import { Role } from "@prisma/client";
 import { emailExists, usernameExists } from "../../../utils/common";
@@ -16,6 +20,7 @@ import { ApiResponse } from "../../../utils/handlers/apiResponse";
 import client from "../../../config/redisClient";
 import { decode } from "jsonwebtoken";
 import { UserPayload } from "../../../types/index.types";
+import { uploadFileToS3 } from "../../../services/s3Service";
 
 export const userLogin = asyncHander(async (req: Request, res: Response) => {
   const username = req.body.username;
@@ -251,20 +256,110 @@ export const googleLoginForUser = asyncHander(
 export const getCompleteUserDetails = asyncHander(
   async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.params.userId;
-    if(!userId){
+    if (!userId) {
       throw new ApiError(404, "User Id Not Found...");
     }
 
     const userDetails = await getCompleteUserDetailsService(userId);
-    
-    if(userDetails.flag){
+
+    if (userDetails.flag) {
       throw new ApiError(400, userDetails.message);
     }
 
-    return res.status(200).json(new ApiResponse(200, userDetails.data, userDetails.message));
+    return res
+      .status(200)
+      .json(new ApiResponse(200, userDetails.data, userDetails.message));
   }
 );
 
- export const UpdateUserDetails = asyncHander(async(req: Request, res: Response, next: NextFunction) => {
-  console.log(req.body);
-})
+export const updateUserDetailsWithAddress = asyncHander(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userData = req.body.data;
+    const convertedUserData = JSON.parse(userData);
+    if (convertedUserData.email == "") {
+      throw new ApiError(400, "Email cannot be emtpy");
+    }
+
+    if (convertedUserData.fullname == "") {
+      throw new ApiError(400, "Full Name cannot be emtpy");
+    }
+
+    console.log(convertedUserData);
+
+    let etag = "";
+    let filename = "";
+
+    if (req.file) {
+      const fileKey = await uploadFileToS3(req.file, "user");
+      etag = fileKey.etag!;
+      filename = fileKey.imageName;
+    }
+
+    const userDetails = await updateUserDetailsService(
+      convertedUserData.id,
+      convertedUserData.email,
+      convertedUserData.fullname,
+      convertedUserData.mobileNo,
+      filename
+    );
+
+    if (userDetails.flag) {
+      throw new ApiError(400, userDetails.message);
+    }
+
+    let createNewAddress;
+    if (convertedUserData.userAddress[0].userAddressId == -1) {
+      createNewAddress = await createUserAddressService(
+        convertedUserData.id,
+        convertedUserData.userAddress[0].street,
+        convertedUserData.userAddress[0].city,
+        convertedUserData.userAddress[0].state,
+        convertedUserData.userAddress[0].postalCode,
+        convertedUserData.userAddress[0].country,
+        true
+      );
+
+      if (createNewAddress.flag) {
+        throw new ApiError(400, createNewAddress.message);
+      }
+    } else {
+      createNewAddress = await updateUserAddressService(
+        convertedUserData.userAddress[0].userAddressId,
+        convertedUserData.userAddress[0].street,
+        convertedUserData.userAddress[0].city,
+        convertedUserData.userAddress[0].state,
+        convertedUserData.userAddress[0].postalCode,
+        convertedUserData.userAddress[0].country,
+        true
+      );
+
+      if (createNewAddress.flag) {
+        throw new ApiError(400, createNewAddress.message);
+      }
+    }
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, userDetails.data, userDetails.message));
+  }
+);
+
+
+export const getUserAddressDetails = asyncHander(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.params.userId;
+    if (!userId) {
+      throw new ApiError(404, "User Id Not Found...");
+    }
+
+    const userDetails = await getUserAddressFromUserId(userId);
+
+    if (userDetails.flag) {
+      throw new ApiError(400, userDetails.message);
+    }
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, userDetails.data, userDetails.message));
+  }
+);
