@@ -7,7 +7,6 @@ import {
   ProductType,
 } from "../types/index.types";
 import { getSignedForImage } from "./s3Service";
-import Stripe from "stripe";
 
 const prisma = new PrismaClient({});
 
@@ -94,13 +93,7 @@ export const getAllCategoriesService = async (skip: number, take: number) => {
     const categories = await prisma.category.findMany({
       skip: Number(skip),
       take: Number(take),
-      select: {
-        category_id: true,
-        name: true,
-        description: true,
-        imageName: true,
-        eTag: true,
-        isDeleted: true,
+      include: {
         products: {
           select: {
             product_id: true,
@@ -108,6 +101,12 @@ export const getAllCategoriesService = async (skip: number, take: number) => {
             description: true,
             price: true,
             stock: true,
+            Ratings: true,
+          },
+        },
+        creator: {
+          select: {
+            fullname: true,
           },
         },
       },
@@ -131,15 +130,7 @@ export const getAllProductsService = async (skip: number, take: number) => {
     const allProducts = await prisma.product.findMany({
       skip: Number(skip),
       take: Number(take),
-      select: {
-        product_id: true,
-        category_id: true,
-        name: true,
-        description: true,
-        price: true,
-        stock: true,
-        Ratings: true,
-        isDeleted: true,
+      include: {
         category: {
           select: {
             name: true,
@@ -155,7 +146,6 @@ export const getAllProductsService = async (skip: number, take: number) => {
         },
         creator: {
           select: {
-            username: true,
             fullname: true,
           },
         },
@@ -666,7 +656,7 @@ export async function clearCartForUser(userId: string) {
     // Delete all CartItems associated with the user
     return await prisma.cartItems.deleteMany({
       where: {
-          user_id: userId,
+        user_id: userId,
       },
     });
   } catch (error) {

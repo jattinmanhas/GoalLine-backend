@@ -36,7 +36,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 export const getAllCategories = asyncHander(
   async (req: Request, res: Response) => {
     let skip = 0;
-    let take = 50;
+    let take = 100000;
     const redisHashKey = `categories`;
     if (req.query.skip) {
       skip = Number(req.query.skip);
@@ -82,6 +82,7 @@ export const getAllCategories = asyncHander(
       JSON.stringify(categoriesWithSignedUrls)
     );
     await client.expire(redisHashKey, 86400);
+
     return res
       .status(200)
       .json(
@@ -93,7 +94,7 @@ export const getAllCategories = asyncHander(
 export const getAllProducts = asyncHander(
   async (req: Request, res: Response) => {
     let skip = 0;
-    let take = 50;
+    let take = 100000;
     const redisHashKey = `products`;
 
     if (req.query.skip) {
@@ -440,7 +441,7 @@ export const getAllProductInCategory = asyncHander(
 export const createStripeSession = asyncHander(
   async (req: Request, res: Response, next: NextFunction) => {
     let products = req.body.products;
-    let user = (req.user) as UserPayload;
+    let user = req.user as UserPayload;
 
     const metadata = {
       email: user.email,
@@ -450,7 +451,7 @@ export const createStripeSession = asyncHander(
       userId: user.id,
     };
 
-    console.log(metadata)
+    console.log(metadata);
 
     const lineItems = products.map((product: any) => ({
       price_data: {

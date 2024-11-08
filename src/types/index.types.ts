@@ -62,7 +62,7 @@ export type categoryType = {
 };
 
 type Creator = {
-  username: string | null;
+  username?: string | null;
   fullname: string | null;
 };
 

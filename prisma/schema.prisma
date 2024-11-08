@@ -206,3 +206,10 @@ model OrderItem {
 
   @@map("OrderItems")
 }
+
+model Contact {
+  id Int @id @default(autoincrement())
+  email String
+  subject String
+  message String
+}
