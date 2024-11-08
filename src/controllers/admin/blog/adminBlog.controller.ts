@@ -9,6 +9,7 @@ import {
   createNewBlogSectionImage,
   createNewBlogService,
 } from "../../../services/blog.services";
+import client from "../../../config/redisClient";
 
 export const createNewBlog = asyncHander(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -55,14 +56,24 @@ export const createNewBlog = asyncHander(
             createSection.data?.id!
           );
 
-          if(createSectionImage.flag){
+          if (createSectionImage.flag) {
             throw new ApiError(400, createSectionImage.message);
           }
         }
       }
     }
 
-    return res.status(200).json(new ApiResponse(200, createBlog.data, "New Blog Created Successfully..."));
+    await client.del("blogs");
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          createBlog.data,
+          "New Blog Created Successfully..."
+        )
+      );
   }
 );
 
