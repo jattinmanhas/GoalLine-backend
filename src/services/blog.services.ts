@@ -224,3 +224,21 @@ export async function getAllBlogsService(skip: number, take: number) {
     };
   }
 }
+
+export const getBlogsCountService = async () => {
+  try{
+    const blogsCount = await prisma.blog.count({})
+
+    return {
+      flag: false,
+      data: blogsCount,
+      message: "Blogs Count fetched Successfully.",
+    }
+  }catch (error) {
+    return{
+      flag: true,
+      message: "Failed to Fetch All Blogs Count.",
+      data: null,
+    }
+  }
+}

@@ -2,7 +2,7 @@ import { Router } from "express";
 import {
   addCategory,
   createNewCategory,
-  createNewProduct,
+  createNewProduct, getAllProductsCount,
 } from "../../../controllers/admin/shop/shop.controller";
 import upload, {
   multipleFileUpload,
@@ -27,4 +27,16 @@ shopAdminRoute.post(
   multipleFileUpload("file", 8),
   validateRequest(ProductSchema),
   createNewProduct
+);
+
+shopAdminRoute.get(
+    "/productsCount",
+    passport.authenticate("jwt-admin", { session: false }),
+    getAllProductsCount
+);
+
+shopAdminRoute.get(
+    "/categoryCount",
+    passport.authenticate("jwt-admin", { session: false }),
+    getAllProductsCount
 );

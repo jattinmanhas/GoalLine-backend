@@ -545,3 +545,51 @@ export const getUserAddressFromUserId = async (userId: string) => {
     };
   }
 };
+
+export const getAllUsersService = async () => {
+  try{
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        fullname: true,
+        mobileNo: true,
+        email: true,
+        role: true,
+        image: true,
+        isDeleted: true,
+        updatedDatetime: true,
+      }
+    })
+
+    return {
+      flag: false,
+      data: users,
+      message: "Successfully Fetched All Users",
+    }
+  }catch(error){
+    return {
+      flag: true,
+      data: null,
+      message: "Failed to Fetch All Users " + error,
+    }
+  }
+}
+
+export const getAllUsersCountService = async () => {
+  try{
+    const users = await prisma.user.count();
+
+    return {
+      flag: false,
+      data: users,
+      message: "Successfully Fetched Users Count",
+    }
+  }catch (error) {
+    return {
+      flag: true,
+      data: null,
+      message: "Failed to Fetch Users Count", error
+    }
+  }
+}

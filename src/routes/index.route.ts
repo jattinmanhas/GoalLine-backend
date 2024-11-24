@@ -9,15 +9,15 @@ import { adminBlog } from "./admin/blog/adminBlog.route";
 import { createContact, searchProductsBlogs } from "../controllers/user/contact/contact.controller";
 
 // ----------------------------    ADMIN ROUTES    -----------------------------------
-router.use("/admin", adminAuthRoute);
-router.use("/admin/shop", shopAdminRoute)
-router.use("/admin/blog", adminBlog);
+router.use("/api/admin", adminAuthRoute);
+router.use("/api/admin/shop", shopAdminRoute)
+router.use("/api/admin/blog", adminBlog);
 
 // ----------------------------    USER ROUTES    -----------------------------------
-router.use("/user", userAuthRoute);
-router.use("/user/shop", userShopRoute);
-router.use("/user/blog", userBlogRoute);
+router.use("/api/user", userAuthRoute);
+router.use("/api/user/shop", userShopRoute);
+router.use("/api/user/blog", userBlogRoute);
 
 // ================================== QUERY ROUTE =========================================
-router.use("/contact", createContact)
-router.use("/searchBoth", searchProductsBlogs);
+router.use("/api/contact", createContact)
+router.use("/api/searchBoth", searchProductsBlogs);

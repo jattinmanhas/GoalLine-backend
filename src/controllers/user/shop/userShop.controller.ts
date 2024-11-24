@@ -294,7 +294,7 @@ export const updateQuantity = asyncHander(
 
     return res
       .status(200)
-      .json(new ApiResponse(200, updateQty.data, updateQty.message));
+      .json(new ApiResponse(200, null, updateQty.message));
   }
 );
 
@@ -363,7 +363,7 @@ export const deleteItemFromUserCart = asyncHander(
 
     return res
       .status(200)
-      .json(new ApiResponse(200, deleteItem.data, deleteItem.message));
+      .json(new ApiResponse(200, null, deleteItem.message));
   }
 );
 

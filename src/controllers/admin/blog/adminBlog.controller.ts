@@ -5,9 +5,9 @@ import { ApiError } from "../../../utils/handlers/apiError";
 import { ApiResponse } from "../../../utils/handlers/apiResponse";
 import { BlogSection, UserPayload } from "../../../types/index.types";
 import {
-  createNewBlogSection,
-  createNewBlogSectionImage,
-  createNewBlogService,
+    createNewBlogSection,
+    createNewBlogSectionImage,
+    createNewBlogService, getBlogsCountService,
 } from "../../../services/blog.services";
 import client from "../../../config/redisClient";
 
@@ -97,3 +97,12 @@ export const uploadBlogImageToS3 = asyncHander(
       );
   }
 );
+
+export const getAllBlogsCount = asyncHander(async (req: Request, res: Response, next: NextFunction) => {
+    const blogsCount = await getBlogsCountService();
+    if(blogsCount.flag){
+        throw new ApiError(404, "Blog count not found");
+    }
+
+    return res.status(200).json(new ApiResponse(200, blogsCount.data, blogsCount.message));
+})

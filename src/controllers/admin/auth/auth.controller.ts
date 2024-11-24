@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { asyncHander } from "../../../utils/handlers/asyncHander";
 import {
   createUser,
-  createUserAuthSettings,
+  createUserAuthSettings, getAllUsersCountService, getAllUsersService,
   loginServiceforAdmin,
 } from "../../../services/auth.services";
 import { Role } from "@prisma/client";
@@ -106,3 +106,21 @@ export const register = asyncHander(async (req: Request, res: Response) => {
     .status(200)
     .json({ data: user.data, message: "ADMIN User created successfully..." });
 });
+
+export const getAllUsers = asyncHander(async (req: Request, res: Response) => {
+    const users = await getAllUsersService();
+    if(users.flag){
+      throw new ApiError(400, users.message);
+    }
+
+    return res.status(200).json(new ApiResponse(200, users.data, users.message));
+})
+
+export const getAllUsersCount = asyncHander(async (req: Request, res: Response) => {
+    const userCount = await getAllUsersCountService();
+    if(userCount.flag){
+      throw new ApiError(400, userCount.message);
+    }
+
+    return res.status(200).json(new ApiResponse(200, userCount.data, userCount.message));
+})

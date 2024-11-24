@@ -10,9 +10,9 @@ import {
   UserPayload,
 } from "../../../types/index.types";
 import {
-  createCategory,
-  createProduct,
-  insertProductImageMetadata,
+    createCategory,
+    createProduct, getAllCategoryCountService, getAllProductsCountService,
+    insertProductImageMetadata,
 } from "../../../services/shop.services";
 import client from "../../../config/redisClient";
 
@@ -121,3 +121,21 @@ export const createNewProduct = asyncHander(
       );
   }
 );
+
+export const getAllProductsCount = asyncHander(async (req: Request, res: Response) => {
+    const products = await getAllProductsCountService();
+    if(products.flag){
+        throw new ApiError(400, products.message);
+    }
+
+    return res.status(200).json(new ApiResponse(200, products.data, products.message));
+})
+
+export const getAllCategoryCount = asyncHander(async (req: Request, res: Response) => {
+    const category = await getAllCategoryCountService();
+    if( category.flag){
+        throw new ApiError(400,  category.message);
+    }
+
+    return res.status(200).json(new ApiResponse(200,  category.data, category.message));
+})

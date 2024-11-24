@@ -191,7 +191,7 @@ export const checkPassportJWT = asyncHander(
 );
 
 export const userLogout = asyncHander(async (req: Request, res: Response) => {
-  const key = req.body.refreshId.value;
+  const key = req.body.value;
 
   if (!key) {
     throw new ApiError(400, "Failed to find UserId to logout.");
@@ -201,7 +201,7 @@ export const userLogout = asyncHander(async (req: Request, res: Response) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, "", "User Logout Success..."));
+    .json(new ApiResponse(200, null, "User Logout Success..."));
 });
 
 export const googleLoginForUser = asyncHander(
@@ -276,6 +276,7 @@ export const updateUserDetailsWithAddress = asyncHander(
   async (req: Request, res: Response, next: NextFunction) => {
     const userData = req.body.data;
     const convertedUserData = JSON.parse(userData);
+    console.log(convertedUserData);
     if (convertedUserData.email == "") {
       throw new ApiError(400, "Email cannot be emtpy");
     }

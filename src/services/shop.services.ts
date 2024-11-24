@@ -664,3 +664,42 @@ export async function clearCartForUser(userId: string) {
     throw error;
   }
 }
+
+export async function getAllProductsCountService(){
+  try{
+    const productsCount = await prisma.product.count({})
+
+    return {
+      flag: false,
+      data: productsCount,
+      message: "Products Count fetched successfully...",
+    }
+
+  }catch(error){
+    return {
+      flag: true,
+      data: null,
+      message: "Failed to fetch Products Count.", error
+    }
+  }
+}
+
+
+export async function getAllCategoryCountService(){
+  try{
+    const categoryCount = await prisma.category.count({})
+
+    return {
+      flag: false,
+      data: categoryCount,
+      message: "Category Count fetched successfully...",
+    }
+
+  }catch(error){
+    return {
+      flag: true,
+      data: null,
+      message: "Failed to fetch Category Count.", error
+    }
+  }
+}
