@@ -703,3 +703,38 @@ export async function getAllCategoryCountService(){
     }
   }
 }
+
+export async function getAllOrdersWithPaymentsService() {
+  try {
+    const orders = await prisma.order.findMany({
+      include: {
+        orderItems: {
+          include: {
+            product: {
+              select: {
+                name: true,
+                price: true,
+                description: true
+              }
+            }
+          }
+        },
+        payment: true
+      }
+    });
+
+    return {
+      flag: false,
+      data: orders,
+      message: "Orders with payments fetched successfully..."
+    };
+
+  } catch (error) {
+    return {
+      flag: true,
+      data: null,
+      message: "Failed to fetch orders with payments.",
+      error
+    };
+  }
+}

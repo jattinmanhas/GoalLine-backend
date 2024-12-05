@@ -18,6 +18,8 @@ export const stripeWebhook = async (
   res: Response,
   next: NextFunction
 ) => {
+  console.log('⚡ Webhook received');
+  console.log('Headers:', req.headers['stripe-signature']);
   let event: Stripe.Event;
 
   try {
@@ -26,6 +28,8 @@ export const stripeWebhook = async (
       req.headers["stripe-signature"]!,
       process.env.WEBHOOK_SECRET as string
     );
+    console.log('✅ Webhook verified successfully');
+    console.log('Event type:', event.type);
   } catch (err: any) {
     console.error("Webhook signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -54,9 +58,11 @@ export const stripeWebhook = async (
 
       case "checkout.session.completed":
         const checkoutSession = event.data.object as Stripe.Checkout.Session;
-        console.log(
-          `Checkout session completed. Payment ID: ${checkoutSession.payment_intent}`
-        );
+        console.log('📦 Checkout Session Data:', {
+          customerId: checkoutSession.metadata?.userId,
+          amount: checkoutSession.amount_total,
+          productIds: checkoutSession.metadata?.productIds
+        });
         const customerId = checkoutSession.metadata!.userId;
         const order = await createOrder(
           customerId,
@@ -115,6 +121,5 @@ export const stripeWebhook = async (
     console.error("Error processing Stripe webhook:", err.message);
     return res.status(500).send(`Webhook Error: ${err.message}`);
   }
-
   res.json({ received: true });
 };

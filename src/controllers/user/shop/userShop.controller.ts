@@ -4,6 +4,7 @@ import {
   createCartItemForUser,
   deleteItemFromUserCartService,
   getAllCategoriesService,
+  getAllOrdersWithPaymentsService,
   getAllProductInCategoryService,
   getAllProductsService,
   GetSignedProductsImageUrl,
@@ -451,8 +452,6 @@ export const createStripeSession = asyncHander(
       userId: user.id,
     };
 
-    console.log(metadata);
-
     const lineItems = products.map((product: any) => ({
       price_data: {
         currency: "usd",
@@ -478,5 +477,14 @@ export const createStripeSession = asyncHander(
     res
       .status(200)
       .json(new ApiResponse(200, session.id, "Payment Successful"));
+  }
+);
+
+export const getAllOrdersWithPayments = asyncHander(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const orders = await getAllOrdersWithPaymentsService();
+    if (orders.flag) throw new ApiError(400, orders.message);
+
+    return res.status(200).json(new ApiResponse(200, orders.data, orders.message));
   }
 );

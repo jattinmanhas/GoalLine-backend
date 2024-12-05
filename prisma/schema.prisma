@@ -109,6 +109,7 @@ model Product {
   creator   user           @relation(fields: [createdBy], references: [id])
   images    ProductImage[]
   CartItems CartItems[]
+  orderItems OrderItem[]
 }
 
 model ProductImage {
@@ -196,13 +197,12 @@ model Payment {
 }
 
 model OrderItem {
-  id        String @id @default(uuid()) // Primary key
-  quantity  Int // Quantity of the product ordered
-  productId String // Reference to product ID
-  orderId   String // Foreign key to Order
-
-  // Relation Fields
-  order Order @relation(fields: [orderId], references: [id])
+  id        String   @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  order     Order    @relation(fields: [orderId], references: [id])
+  product   Product  @relation(fields: [productId], references: [product_id])
 
   @@map("OrderItems")
 }

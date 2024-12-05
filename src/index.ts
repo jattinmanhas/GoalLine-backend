@@ -20,6 +20,7 @@ const port = process.env.PORT || 5000;
 
 
 app.post("/webhook", raw({ type: "application/json" }), stripeWebhook);
+
 app.use(json());
 app.use(urlencoded({ extended: true }));
 app.use(

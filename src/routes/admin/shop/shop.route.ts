@@ -11,6 +11,7 @@ import upload, {
 import passport, { session } from "passport";
 import { validateRequest } from "../../../middleware/validationMiddleware";
 import { CategorySchema, ProductSchema } from "../../../utils/validation/categoryValidation";
+import { getAllOrdersWithPayments } from "../../../controllers/user/shop/userShop.controller";
 
 export const shopAdminRoute = Router();
 
@@ -40,3 +41,5 @@ shopAdminRoute.get(
     passport.authenticate("jwt-admin", { session: false }),
     getAllProductsCount
 );
+
+shopAdminRoute.get("/getAllOrdersWithPayments", passport.authenticate("jwt-admin", { session: false }), getAllOrdersWithPayments);
