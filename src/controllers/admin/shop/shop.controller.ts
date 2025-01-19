@@ -12,9 +12,13 @@ import {
 import {
     createCategory,
     createProduct, getAllCategoryCountService, getAllProductsCountService,
+    getCurrentDayEarningsService,
     insertProductImageMetadata,
 } from "../../../services/shop.services";
 import client from "../../../config/redisClient";
+import { getChannel } from "../../../config/rabbitmq";
+import path from "path";
+import { writeFileSync } from "fs";
 
 export const addCategory = asyncHander(async (req: Request, res: Response) => {
   res.send("Add Category from the db....");
@@ -32,11 +36,17 @@ export const createNewCategory = asyncHander(
     let user = req.user as UserPayload;
     let etag = "";
     let filename = "";
+    let tempFilePath = "";
 
     if (req.file) {
-      const fileKey = await uploadFileToS3(req.file, "category");
-      etag = fileKey.etag!;
-      filename = fileKey.imageName;
+      // const fileKey = await uploadFileToS3(req.file, "category");
+      // etag = fileKey.etag!;
+      // filename = fileKey.imageName;
+      tempFilePath = path.join(__dirname, "../../../temp", req.file.originalname);
+      writeFileSync(tempFilePath, req.file.buffer);
+
+      etag = "uploading"; 
+      filename = req.file.originalname;
     }
 
     let categoryData: categoryInsert = {
@@ -52,6 +62,15 @@ export const createNewCategory = asyncHander(
 
     if (category.flag) {
       throw new ApiError(400, category.message);
+    }
+
+    if(req.file){
+      const channel = await getChannel();
+      channel.sendToQueue("fileUploadQueue", Buffer.from(JSON.stringify({
+        file: tempFilePath,
+        folder: 'category',
+        folder_id: category.data?.category_id
+      })));
     }
 
     await client.del("categories");
@@ -74,14 +93,14 @@ export const createNewProduct = asyncHander(
     const files = req.files as Express.Multer.File[];
     let user = req.user as UserPayload;
 
-    const uploadedFiles: { imageName: string; etag: string | undefined }[] = [];
+    // const uploadedFiles: { imageName: string; etag: string | undefined }[] = [];
 
-    if (req.files) {
-      for (const file of files) {
-        const fileKey = await uploadFileToS3(file, "products");
-        uploadedFiles.push(fileKey);
-      }
-    }
+    // if (req.files) {
+    //   for (const file of files) {
+    //     const fileKey = await uploadFileToS3(file, "products");
+    //     uploadedFiles.push(fileKey);
+    //   }
+    // }
 
     let product_data: productInsert = {
       product_name: product_name,
@@ -98,7 +117,23 @@ export const createNewProduct = asyncHander(
       throw new ApiError(400, createNewProduct.message);
     }
 
-    for (const upload of uploadedFiles) {
+    if (req.files) {
+      for (const file of files) {
+        // const fileKey = await uploadFileToS3(file, "products");
+        // uploadedFiles.push(fileKey);
+        const tempFilePath = path.join(__dirname, "../../../temp", file.originalname);
+        writeFileSync(tempFilePath, file.buffer);
+
+        const channel = await getChannel();
+        channel.sendToQueue("fileUploadQueue", Buffer.from(JSON.stringify({
+          file: tempFilePath,
+          folder: 'products',
+          folder_id: createNewProduct.data?.product_id
+        })));
+      }
+    }
+
+    /* for (const upload of uploadedFiles) {
       let productImage: productImageMetadata = {
         product_id: createNewProduct.data?.product_id as string,
         imageName: upload.imageName,
@@ -110,7 +145,7 @@ export const createNewProduct = asyncHander(
       if (imageMeta.flag) {
         throw new ApiError(400, imageMeta.message);
       }
-    }
+    } */
 
     await client.del("products");
 
@@ -138,4 +173,13 @@ export const getAllCategoryCount = asyncHander(async (req: Request, res: Respons
     }
 
     return res.status(200).json(new ApiResponse(200,  category.data, category.message));
+})
+
+export const getCurrentDayEarnings = asyncHander(async (req: Request, res: Response) => {
+    const earnings = await getCurrentDayEarningsService();
+    if(earnings.flag){
+        throw new ApiError(400, earnings.message);
+    }
+
+    return res.status(200).json(new ApiResponse(200, earnings.data, earnings.message));
 })

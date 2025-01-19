@@ -35,6 +35,31 @@ export const createCategory = async (categoryData: categoryInsert) => {
   }
 };
 
+export const updateCategoryImageDetails = async(imageName: string, etag: string | undefined, categoryId: string) => {
+  try {
+    const updatedCategory = await prisma.category.update({
+      where: {
+        category_id: categoryId
+      },
+      data: {
+        imageName: imageName,
+        eTag: etag
+      }
+    });
+
+    return {
+      flag: false,
+      data: updatedCategory,
+      message: "Category Image Updated Successfully..."
+    }
+  } catch (error) {
+    return {
+      flag: true,
+      message: "Failed to update category image details..."
+    }
+  }
+}
+
 export const createProduct = async (productData: productInsert) => {
   try {
     const insertProduct = await prisma.product.create({
@@ -735,6 +760,41 @@ export async function getAllOrdersWithPaymentsService() {
       data: null,
       message: "Failed to fetch orders with payments.",
       error
+    };
+  }
+}
+
+export async function getCurrentDayEarningsService() {
+  try {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const earnings = await prisma.order.aggregate({
+      _sum: {
+        totalAmount: true
+      },
+      where: {
+        createdAt: {
+          gte: startOfDay,
+          lte: endOfDay
+        }
+      }
+    }) as { _sum: { totalAmount: number | null } };
+
+    return {
+      flag: false,
+      data: earnings._sum?.totalAmount ?? 0,
+      message: "Current day earnings fetched successfully...",
+    };
+  } catch (error) {
+    return {
+      flag: true,
+      data: null,
+      message: "Failed to fetch current day earnings.",
+      error,
     };
   }
 }

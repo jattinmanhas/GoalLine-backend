@@ -42,7 +42,7 @@ export type productInsert = {
 export type productImageMetadata = {
   product_id: string;
   imageName: string;
-  etag: string;
+  etag: string | undefined;
 };
 
 export type categoryType = {
@@ -74,7 +74,7 @@ type CategoryForProducts = {
 
 export type ProductImage = {
   imageName: string;
-  eTag: string;
+  eTag: string | null;
   image_id: number;
   signedUrl?: string;
 };

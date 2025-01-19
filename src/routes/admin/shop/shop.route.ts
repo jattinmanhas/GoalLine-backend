@@ -3,6 +3,7 @@ import {
   addCategory,
   createNewCategory,
   createNewProduct, getAllProductsCount,
+  getCurrentDayEarnings,
 } from "../../../controllers/admin/shop/shop.controller";
 import upload, {
   multipleFileUpload,
@@ -43,3 +44,5 @@ shopAdminRoute.get(
 );
 
 shopAdminRoute.get("/getAllOrdersWithPayments", passport.authenticate("jwt-admin", { session: false }), getAllOrdersWithPayments);
+
+shopAdminRoute.get("/currentDayEarnings", passport.authenticate("jwt-admin", { session: false }), getCurrentDayEarnings);

@@ -13,6 +13,7 @@ import client from "../../../config/redisClient";
 
 export const createNewBlog = asyncHander(
   async (req: Request, res: Response, next: NextFunction) => {
+    console.log(req.body);
     let heading = req.body.heading;
     let description = req.body.description;
     let imageName = null;

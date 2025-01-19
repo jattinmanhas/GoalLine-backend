@@ -14,6 +14,10 @@ import passport from "passport";
 import jwtAdminStrategy from "./utils/Strategies/jwtAdminStrategy";
 import morgan from "morgan";
 import { stripeWebhook } from "./services/webhook";
+import { connectToRabbitMQ } from "./config/rabbitmq";
+import path from "path";
+import { existsSync, mkdirSync } from "fs";
+import { startFileUploadConsumer } from "./utils/consumers/fileUploadConsumer";
 
 const app: Application = express();
 const port = process.env.PORT || 5000;
@@ -22,6 +26,18 @@ const port = process.env.PORT || 5000;
 app.post("/webhook", raw({ type: "application/json" }), stripeWebhook);
 
 app.use(json());
+connectToRabbitMQ().then(() => {
+  console.log('RabbitMQ initialized');
+  startFileUploadConsumer();
+}).catch((err) => {
+  console.error('Failed to initialize RabbitMQ', err);
+})
+
+const tempDir = path.join(__dirname, 'temp');
+if (!existsSync(tempDir)) {
+  mkdirSync(tempDir);
+}
+
 app.use(urlencoded({ extended: true }));
 app.use(
   cors({

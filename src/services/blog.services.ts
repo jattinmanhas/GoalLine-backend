@@ -79,7 +79,7 @@ export async function createNewBlogService(
   } catch (error) {
     return {
       flag: true,
-      message: "Failed to find Blog.",
+      message: "Failed to Create Blog.",
       data: null,
     };
   }
