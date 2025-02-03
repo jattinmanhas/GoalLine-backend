@@ -8,7 +8,7 @@ import {
 } from "../utils/common";
 import { verify } from "jsonwebtoken";
 import { asyncHander } from "../utils/handlers/asyncHander";
-import { getSignedForImage } from "./s3Service";
+import { getSignedForImagesUsingCloudFront } from "./s3Service";
 
 const prisma = new PrismaClient({
   log: ["query"],
@@ -388,7 +388,7 @@ export const getCompleteUserDetailsService = async (userId: string) => {
       : null;
 
     if (userWithSignedUrl?.image) {
-      userWithSignedUrl.signedUrl = await getSignedForImage(
+      userWithSignedUrl.signedUrl = await getSignedForImagesUsingCloudFront(
         userWithSignedUrl.image
       );
     }

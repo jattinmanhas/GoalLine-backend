@@ -6,7 +6,7 @@ import {
   productInsert,
   ProductType,
 } from "../types/index.types";
-import { getSignedForImage } from "./s3Service";
+import { getSignedForImagesUsingCloudFront } from "./s3Service";
 
 const prisma = new PrismaClient({});
 
@@ -237,7 +237,7 @@ export const getSingleProductService = async (id: string) => {
     const imagesWithSignedUrls = await Promise.all(
       product.images.map(async (image) => ({
         ...image,
-        signedUrl: await getSignedForImage(image.imageName),
+        signedUrl: await getSignedForImagesUsingCloudFront(image.imageName),
       }))
     );
 
@@ -487,7 +487,7 @@ export const getUserAllCartItems = async (user_id: string) => {
           images: await Promise.all(
             item.product.images.map(async (image) => ({
               ...image,
-              signedUrl: await getSignedForImage(image.imageName),
+              signedUrl: await getSignedForImagesUsingCloudFront(image.imageName),
             }))
           ),
         },
@@ -561,7 +561,7 @@ export const GetSignedProductsImageUrl = async (allProducts: ProductType[]) => {
         images = await Promise.all(
           product.images.map(async (image) => ({
             ...image,
-            signedUrl: await getSignedForImage(image.imageName),
+            signedUrl: await getSignedForImagesUsingCloudFront(image.imageName),
           }))
         );
       }

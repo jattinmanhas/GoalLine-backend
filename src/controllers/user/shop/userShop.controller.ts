@@ -19,7 +19,7 @@ import {
 } from "../../../services/shop.services";
 import { ApiError } from "../../../utils/handlers/apiError";
 import { ApiResponse } from "../../../utils/handlers/apiResponse";
-import { getSignedForImage } from "../../../services/s3Service";
+import { getSignedForImagesUsingCloudFront } from "../../../services/s3Service";
 import {
   categoryType,
   ProductImage,
@@ -71,7 +71,7 @@ export const getAllCategories = asyncHander(
     if (allCategories.data) {
       categoriesWithSignedUrls = await Promise.all(
         allCategories.data.map(async (cate) => ({
-          signedUrl: await getSignedForImage(cate.imageName!),
+          signedUrl: await getSignedForImagesUsingCloudFront(cate.imageName!),
           ...cate,
         }))
       );

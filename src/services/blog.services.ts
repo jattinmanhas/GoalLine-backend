@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { BlogPost, BlogSection } from "../types/index.types";
-import { getSignedForImage } from "./s3Service";
+import { getSignedForImagesUsingCloudFront } from "./s3Service";
 
 const prisma = new PrismaClient({});
 
@@ -140,7 +140,7 @@ const addSignedUrlsToResponse = async (responseData: BlogPost[]) => {
   return Promise.all(
     responseData.map(async (blogPost) => {
       if (blogPost.mainImage) {
-        blogPost.mainImageSignedUrl = await getSignedForImage(
+        blogPost.mainImageSignedUrl = await getSignedForImagesUsingCloudFront(
           blogPost.mainImage
         );
       }
@@ -149,7 +149,7 @@ const addSignedUrlsToResponse = async (responseData: BlogPost[]) => {
         blogPost.sections = await Promise.all(
           blogPost.sections.map(async (section) => {
             if (section.image && section.image.imageName) {
-              section.image.signedUrl = await getSignedForImage(
+              section.image.signedUrl = await getSignedForImagesUsingCloudFront(
                 section.image.imageName
               );
             }
@@ -165,14 +165,14 @@ const addSignedUrlsToResponse = async (responseData: BlogPost[]) => {
 
 const addSignedUrlsToSinglePost = async (blogPost: BlogPost) => {
   if (blogPost.mainImage) {
-    blogPost.mainImageSignedUrl = await getSignedForImage(blogPost.mainImage);
+    blogPost.mainImageSignedUrl = await getSignedForImagesUsingCloudFront(blogPost.mainImage);
   }
 
   if (blogPost.sections && Array.isArray(blogPost.sections)) {
     blogPost.sections = await Promise.all(
       blogPost.sections.map(async (section) => {
         if (section.image && section.image.imageName) {
-          section.image.signedUrl = await getSignedForImage(
+          section.image.signedUrl = await getSignedForImagesUsingCloudFront(
             section.image.imageName
           );
         }

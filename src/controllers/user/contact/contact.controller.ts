@@ -6,7 +6,7 @@ import {
 } from "../../../services/contact.service";
 import { ApiError } from "../../../utils/handlers/apiError";
 import { ApiResponse } from "../../../utils/handlers/apiResponse";
-import { getSignedForImage } from "../../../services/s3Service";
+import { getSignedForImagesUsingCloudFront } from "../../../services/s3Service";
 
 export const createContact = asyncHander(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -38,7 +38,7 @@ export const searchProductsBlogs = asyncHander(
 
     search.data?.blogs.forEach(async (blog) => {
       if (blog.mainImage) {
-        blog.mainImage = await getSignedForImage(blog.mainImage);
+        blog.mainImage = await getSignedForImagesUsingCloudFront(blog.mainImage);
       }
     });
 
@@ -48,7 +48,7 @@ export const searchProductsBlogs = asyncHander(
         product.images = await Promise.all(
           product.images.map(async (image) => ({
             ...image,
-            imageName: await getSignedForImage(image.imageName),
+            imageName: await getSignedForImagesUsingCloudFront(image.imageName),
           }))
         );
       }
