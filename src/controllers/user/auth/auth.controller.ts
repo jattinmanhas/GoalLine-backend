@@ -109,9 +109,16 @@ export const userRegistration = asyncHander(
       throw new ApiError(400, userAuth.message as string);
     }
 
+    const userReturn: UserPayload = {
+      id : user.data?.id!,
+      username: user.data?.username!,
+      email: user.data?.email!,
+      role: user.data?.role,
+    }
+
     return res
       .status(200)
-      .json(new ApiResponse(200, req.body, "New User Created Successfully..."));
+      .json(new ApiResponse(200, userReturn, "New User Created Successfully..."));
   }
 );
 

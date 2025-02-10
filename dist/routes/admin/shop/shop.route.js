@@ -1,0 +1,20 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.shopAdminRoute = void 0;
+const express_1 = require("express");
+const shop_controller_1 = require("../../../controllers/admin/shop/shop.controller");
+const fileUpload_1 = require("../../../middleware/fileUpload");
+const passport_1 = __importDefault(require("passport"));
+const validationMiddleware_1 = require("../../../middleware/validationMiddleware");
+const categoryValidation_1 = require("../../../utils/validation/categoryValidation");
+const userShop_controller_1 = require("../../../controllers/user/shop/userShop.controller");
+exports.shopAdminRoute = (0, express_1.Router)();
+exports.shopAdminRoute.post("/addCategory", passport_1.default.authenticate("jwt-admin", { session: false }), (0, fileUpload_1.singleFileUpload)("file"), shop_controller_1.createNewCategory);
+exports.shopAdminRoute.post("/addProduct", passport_1.default.authenticate("jwt-admin", { session: false }), (0, fileUpload_1.multipleFileUpload)("file", 8), (0, validationMiddleware_1.validateRequest)(categoryValidation_1.ProductSchema), shop_controller_1.createNewProduct);
+exports.shopAdminRoute.get("/productsCount", passport_1.default.authenticate("jwt-admin", { session: false }), shop_controller_1.getAllProductsCount);
+exports.shopAdminRoute.get("/categoryCount", passport_1.default.authenticate("jwt-admin", { session: false }), shop_controller_1.getAllProductsCount);
+exports.shopAdminRoute.get("/getAllOrdersWithPayments", passport_1.default.authenticate("jwt-admin", { session: false }), userShop_controller_1.getAllOrdersWithPayments);
+exports.shopAdminRoute.get("/currentDayEarnings", passport_1.default.authenticate("jwt-admin", { session: false }), shop_controller_1.getCurrentDayEarnings);

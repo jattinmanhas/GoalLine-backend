@@ -50,7 +50,7 @@ export async function getSignedForImage(imageName: string) {
 export async function getSignedForImagesUsingCloudFront(imageName: string) {
   const signedUrl = getCloudFrontSignedUrl({
     url: process.env.CLOUDFRONT_URL + imageName,
-    dateLessThan: new Date(Date.now() + 86400).toISOString(),
+    dateLessThan: new Date(Date.now() + 86400 * 1000).toISOString(),
     privateKey: process.env.CLOUDFRONT_PRIVATE_KEY!,
     keyPairId: process.env.CLOUDFRONT_KEY_PAIR_ID!,
   })
