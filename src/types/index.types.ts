@@ -5,8 +5,7 @@ export interface UserPayload {
   id: string;
   username: string;
   email: string;
-  role?: Role;
-  password?: string;
+  roleId: string;
 }
 
 export interface Tokens {
@@ -16,9 +15,9 @@ export interface Tokens {
 
 export interface ReturnPayload {
   flag: boolean;
-  data?: UserPayload;
+  data: UserPayload | null;
   tokens?: Tokens;
-  message: String;
+  message: string;
 }
 
 export type categoryInsert = {
@@ -63,7 +62,7 @@ export type categoryType = {
 
 type Creator = {
   username?: string | null;
-  fullname: string | null;
+  firstname: string | null;
 };
 
 type CategoryForProducts = {
@@ -118,7 +117,7 @@ type Category = {
 
 // Author type for blog post
 type Author = {
-  fullname: string | null;
+  firstname: string | null;
 };
 
 // Type for each blog post

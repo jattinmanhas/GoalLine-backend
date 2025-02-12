@@ -32,11 +32,7 @@ const userJwtStrategy = (passport: PassportStatic) => {
             return done(new ApiError(404, "User not found"), false);
         }
 
-        if(user.role === 'USER'){
             return done(null, jwtPayload);
-        }else{
-            return done(new ApiError(403, 'Not Authorized'), false);
-        }
       } catch (err) {
         return done(new ApiError(500, "Internal Server Error"), false);
       }

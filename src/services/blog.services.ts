@@ -1,8 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { BlogPost, BlogSection } from "../types/index.types";
 import { getSignedForImagesUsingCloudFront } from "./s3Service";
-
-const prisma = new PrismaClient({});
+import prisma from "../config/prismaConfig";
 
 export async function getBlogWithSections(blogId: string) {
   try {
@@ -11,7 +10,7 @@ export async function getBlogWithSections(blogId: string) {
       include: {
         author: {
           select: {
-            fullname: true,
+            firstname: true,
           },
         },
         category: {
@@ -203,7 +202,7 @@ export async function getAllBlogsService(skip: number, take: number) {
         },
         author: {
           select: {
-            fullname: true,
+            firstname: true,
           },
         },
       },

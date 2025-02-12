@@ -15,11 +15,6 @@ export const roleBasedPassportStrategy = asyncHander(async(req: Request, res: Re
 
     const decoded = decode(token) as UserPayload;
 
-    if(decoded.role === Role.ADMIN){
-        passport.authenticate('jwt-admin',{ session: false })(req, res, next);
-    }else if(decoded.role === Role.USER){
-        console.log('inside user');
-        passport.authenticate('jwt-user', {session: false})(req, res, next);
-    }
+    passport.authenticate('jwt-admin',{ session: false })(req, res, next);
 
 })

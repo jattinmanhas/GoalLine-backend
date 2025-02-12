@@ -14,28 +14,39 @@ datasource db {
 }
 
 model user {
-  id               String            @id @default(uuid())
-  username         String            @unique
-  email            String            @unique
-  password         String
-  fullname         String?
-  role             Role              @default(USER)
-  image            String?
-  mobileNo         String?
-  isActive         Boolean           @default(true)
-  createdDatetime  DateTime          @default(now())
-  updatedBy        String?
-  updatedDatetime  DateTime?
-  isDeleted        Boolean           @default(false)
-  userAuthSettings userAuthSettings?
-  categories       Category[] // A User can create multiple categories
-  products         Product[] // A User can create multiple products
-  cartItem         CartItems[] // A user can have multiple products in cart
-  userAddress      userAddress[]
-  Blog             Blog[]
-  order            Order[]
+  id              String    @id @default(uuid())
+  username        String    @unique
+  email           String    @unique
+  password        String
+  firstname       String
+  middleName      String?
+  lastname        String
+  roleId          String
+  imageUrl        String?
+  mobileNo        String?   @unique @db.VarChar(15)
+  isActive        Boolean   @default(true)
+  createdDatetime DateTime  @default(now())
+  updatedBy       String?
+  updatedDatetime DateTime?
+  isDeleted       Boolean   @default(false)
+
+  categories  Category[] // A User can create multiple categories
+  products    Product[] // A User can create multiple products
+  cartItem    CartItems[] // A user can have multiple products in cart
+  userAddress userAddress[]
+  Blog        Blog[]
+  order       Order[]
+  role        Role          @relation("UserRole", fields: [roleId], references: [id])
 
   @@index([username, email])
+}
+
+model Role {
+  id    String @id @default(uuid())
+  name  String @unique
+  description String?
+  isActive Boolean @default(true)
+  users user[] @relation("UserRole")
 }
 
 model userAddress {
@@ -50,27 +61,6 @@ model userAddress {
   isDefault     Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-}
-
-model userAuthSettings {
-  id                              String    @id @default(uuid())
-  user                            user      @relation(fields: [userId], references: [id])
-  userId                          String    @unique
-  loginRetryLimit                 Int       @default(0)
-  loginReactiveTime               DateTime?
-  resetPasswordToken              String?
-  expiredTimeOfResetPasswordToken String?
-  isDeleted                       Boolean   @default(false)
-  createdDatetime                 DateTime  @default(now())
-  updatedBy                       String?
-  updatedDatetime                 DateTime?
-
-  @@index([resetPasswordToken])
-}
-
-enum Role {
-  USER
-  ADMIN
 }
 
 model Category {
@@ -105,17 +95,17 @@ model Product {
   updatedBy       String?
   updatedDatetime DateTime?
 
-  category  Category       @relation(fields: [category_id], references: [category_id])
-  creator   user           @relation(fields: [createdBy], references: [id])
-  images    ProductImage[]
-  CartItems CartItems[]
+  category   Category       @relation(fields: [category_id], references: [category_id])
+  creator    user           @relation(fields: [createdBy], references: [id])
+  images     ProductImage[]
+  CartItems  CartItems[]
   orderItems OrderItem[]
 }
 
 model ProductImage {
-  image_id   Int    @id @default(autoincrement())
+  image_id   Int     @id @default(autoincrement())
   product_id String
-  imageName  String @db.VarChar(255)
+  imageName  String  @db.VarChar(255)
   eTag       String? @db.VarChar(100)
 
   product Product @relation(fields: [product_id], references: [product_id])
@@ -165,51 +155,51 @@ model Image {
 }
 
 model Order {
-  id           String       @id @default(uuid()) // Primary key
-  createdAt    DateTime     @default(now()) // Timestamp
-  updatedAt    DateTime?    @updatedAt
-  status       String       // Status of the order, e.g., 'completed', 'pending', 'cancelled'
-  totalAmount  Int          // Total order amount in cents
-  currency     String       // Currency used for the order, e.g., 'usd'
-  customerId   String       // Customer ID reference
-  user         user         @relation(fields: [customerId], references: [id])
-  
+  id          String    @id @default(uuid()) // Primary key
+  createdAt   DateTime  @default(now()) // Timestamp
+  updatedAt   DateTime? @updatedAt
+  status      String // Status of the order, e.g., 'completed', 'pending', 'cancelled'
+  totalAmount Int // Total order amount in cents
+  currency    String // Currency used for the order, e.g., 'usd'
+  customerId  String // Customer ID reference
+  user        user      @relation(fields: [customerId], references: [id])
+
   // Relation Fields
-  orderItems   OrderItem[]  // Related order items
-  payment      Payment?     @relation("OrderPayment") // Relation name added
+  orderItems OrderItem[] // Related order items
+  payment    Payment?    @relation("OrderPayment") // Relation name added
 
   @@map("Orders") // Optional: Map model to `orders` table in database
 }
 
 model Payment {
-  id           String       @id @default(uuid()) // Primary key
-  paymentId    String       @unique // Unique Stripe payment ID or another reference
-  currency     String       // Currency, e.g., 'usd'
-  status       String       // Payment status, e.g., 'succeeded', 'failed'
-  createdAt    DateTime     @default(now()) // Payment creation timestamp
-  updatedAt    DateTime     @updatedAt
-  orderId      String?      @unique // Foreign key to Order
+  id        String   @id @default(uuid()) // Primary key
+  paymentId String   @unique // Unique Stripe payment ID or another reference
+  currency  String // Currency, e.g., 'usd'
+  status    String // Payment status, e.g., 'succeeded', 'failed'
+  createdAt DateTime @default(now()) // Payment creation timestamp
+  updatedAt DateTime @updatedAt
+  orderId   String?  @unique // Foreign key to Order
 
   // Relation Fields
-  order        Order?       @relation("OrderPayment", fields: [orderId], references: [id])
+  order Order? @relation("OrderPayment", fields: [orderId], references: [id])
 
   @@map("Payments") // Optional: Map model to `payments` table in database
 }
 
 model OrderItem {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   orderId   String
   productId String
   quantity  Int
-  order     Order    @relation(fields: [orderId], references: [id])
-  product   Product  @relation(fields: [productId], references: [product_id])
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [product_id])
 
   @@map("OrderItems")
 }
 
 model Contact {
-  id Int @id @default(autoincrement())
-  email String
+  id      Int    @id @default(autoincrement())
+  email   String
   subject String
   message String
 }

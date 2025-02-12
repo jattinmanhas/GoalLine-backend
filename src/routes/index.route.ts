@@ -13,7 +13,7 @@ router.use("/api/admin", adminAuthRoute);
 router.use("/api/admin/shop", shopAdminRoute)
 router.use("/api/admin/blog", adminBlog);
 
-// ----------------------------    USER ROUTES    -----------------------------------
+// ----------------------------    ALL OTHER ROUTES    -----------------------------------
 router.use("/api/user", userAuthRoute);
 router.use("/api/user/shop", userShopRoute);
 router.use("/api/user/blog", userBlogRoute);

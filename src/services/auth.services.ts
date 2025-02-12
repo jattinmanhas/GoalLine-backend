@@ -9,10 +9,7 @@ import {
 import { verify } from "jsonwebtoken";
 import { asyncHander } from "../utils/handlers/asyncHander";
 import { getSignedForImagesUsingCloudFront } from "./s3Service";
-
-const prisma = new PrismaClient({
-  log: ["query"],
-});
+import prisma from "../config/prismaConfig";
 
 /**
  * @description : Create new User
@@ -25,69 +22,42 @@ export const createUser = async (
   email: string,
   password: string,
   fullname?: string,
-  role: Role = Role.USER
 ): Promise<ReturnPayload> => {
   try {
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    const user = await prisma.user.create({
-      data: {
-        username: username,
-        email: email,
-        password: hashedPassword,
-        fullname: fullname,
-        role: role,
-      },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        role: true,
-      },
-    });
+    // const user = await prisma.user.create({
+    //   data: {
+    //     username: username,
+    //     email: email,
+    //     password: hashedPassword,
+    //     fullname: fullname,
+    //     role: role,
+    //   },
+    //   select: {
+    //     id: true,
+    //     email: true,
+    //     username: true,
+    //     role: true,
+    //   },
+    // });
 
     return {
       flag: false,
-      data: user,
+      data: null,
       message: "User Created Successfully...",
     };
   } catch (error) {
     console.log(error);
     return {
       flag: true,
+      data: null,
       message: "Failed to Create New User...",
     };
   }
 };
 
-/**
- * @description : Create new User auth Settings Entry
- * @param {string} userid : username entered by user
- * @return {object} : Return Return Payload
- */
 
-export const createUserAuthSettings = async (
-  userId: string
-): Promise<ReturnPayload> => {
-  try {
-    await prisma.userAuthSettings.create({
-      data: {
-        userId: userId,
-      },
-    });
-
-    return {
-      flag: false,
-      message: "User Auth Settings Created Successfully...",
-    };
-  } catch (error) {
-    console.log(error);
-    return {
-      flag: true,
-      message: "Failed to Create User Auth Settings",
-    };
-  }
-};
 
 function constructWhereClause(
   field: "username" | "email",
@@ -109,7 +79,7 @@ export const getUser = async (
   includePassword: boolean,
   field: "username" | "email",
   role: Role
-): Promise<UserPayload> => {
+) => {
   try {
     const whereClause = await constructWhereClause(field, username, role);
 
@@ -131,21 +101,6 @@ export const getUser = async (
   }
 };
 
-export const getUserAuthSettings = async (userId: string) => {
-  try {
-    const userAuth = await prisma.userAuthSettings.findUnique({
-      where: {
-        userId: userId,
-      },
-    });
-
-    return userAuth;
-  } catch (error) {
-    console.error(`Error finding user Auth Settings:`, error);
-    throw error;
-  }
-};
-
 export const checkPasswordCorrect = async (
   password: string,
   hashedPassword: string
@@ -155,135 +110,51 @@ export const checkPasswordCorrect = async (
   return match;
 };
 
-export const loginServiceforAdmin = async (
-  username: string,
-  password: string,
-  role: Role,
-  isMail: boolean
-): Promise<ReturnPayload> => {
-  let user;
+//   const isPasswordMatch = await checkPasswordCorrect(password, user.password!);
+//   if (!isPasswordMatch) {
+//     await prisma.userAuthSettings.update({
+//       where: {
+//         userId: user.id,
+//       },
+//       data: {
+//         loginRetryLimit: userAuth?.loginRetryLimit! + 1,
+//       },
+//     });
 
-  if (isMail) {
-    user = await getUser(username, true, "email", role);
-  } else {
-    user = await getUser(username, true, "username", role);
-  }
+//     return {
+//       flag: true,
+//       message: `Incorrect Password. You have ${
+//         3 - userAuth?.loginRetryLimit!
+//       } tries left`,
+//     };
+//   }
 
-  let userAuth = await getUserAuthSettings(user.id);
+//   // generating tokens if password is correct...
+//   let tokens: Tokens = {
+//     token: await generateJwtToken(user),
+//     refreshToken: await generateRefreshToken(user),
+//   };
 
-  let currentTime = new Date();
-  let expireTime = new Date(currentTime.getTime() + 30 * 60 * 1000);
+//   // resetting login retry limit and time...
+//   if (userAuth && userAuth.loginRetryLimit > 0) {
+//     await prisma.userAuthSettings.update({
+//       where: {
+//         userId: user.id,
+//       },
+//       data: {
+//         loginRetryLimit: 0,
+//         loginReactiveTime: null,
+//       },
+//     });
+//   }
 
-  if (userAuth && userAuth.loginRetryLimit >= 3) {
-    const limitTime = userAuth.loginReactiveTime
-      ? new Date(userAuth.loginReactiveTime)
-      : null;
-
-    if (limitTime) {
-      if (limitTime > currentTime) {
-        if (limitTime <= expireTime) {
-          return {
-            flag: true,
-            message: `You have exceeded the number of attempts. You can login after ${getDifferenceOfTwoDatesInMinutes(
-              currentTime,
-              limitTime
-            )} minutes.`,
-          };
-        }
-
-        await prisma.userAuthSettings.update({
-          where: { userId: user.id },
-          data: {
-            loginReactiveTime: expireTime,
-            loginRetryLimit: userAuth.loginRetryLimit! + 1,
-          },
-        });
-
-        return {
-          flag: true,
-          message: `you have exceed the number of limit.you can login after ${getDifferenceOfTwoDatesInMinutes(
-            currentTime,
-            expireTime
-          )} minutes`,
-        };
-      } else {
-        await prisma.userAuthSettings.update({
-          where: { userId: user.id },
-          data: {
-            loginReactiveTime: null,
-            loginRetryLimit: 1,
-          },
-        });
-
-        return {
-          flag: true,
-          message: `Incorrect Password...`,
-        };
-      }
-    } else {
-      await prisma.userAuthSettings.update({
-        where: { userId: user.id },
-        data: {
-          loginReactiveTime: expireTime,
-          loginRetryLimit: userAuth.loginRetryLimit! + 1,
-        },
-      });
-
-      return {
-        flag: true,
-        message: `You have exceed the number of limit.you can login after ${getDifferenceOfTwoDatesInMinutes(
-          currentTime,
-          expireTime
-        )} minutes`,
-      };
-    }
-  }
-
-  const isPasswordMatch = await checkPasswordCorrect(password, user.password!);
-  if (!isPasswordMatch) {
-    await prisma.userAuthSettings.update({
-      where: {
-        userId: user.id,
-      },
-      data: {
-        loginRetryLimit: userAuth?.loginRetryLimit! + 1,
-      },
-    });
-
-    return {
-      flag: true,
-      message: `Incorrect Password. You have ${
-        3 - userAuth?.loginRetryLimit!
-      } tries left`,
-    };
-  }
-
-  // generating tokens if password is correct...
-  let tokens: Tokens = {
-    token: await generateJwtToken(user),
-    refreshToken: await generateRefreshToken(user),
-  };
-
-  // resetting login retry limit and time...
-  if (userAuth && userAuth.loginRetryLimit > 0) {
-    await prisma.userAuthSettings.update({
-      where: {
-        userId: user.id,
-      },
-      data: {
-        loginRetryLimit: 0,
-        loginReactiveTime: null,
-      },
-    });
-  }
-
-  return {
-    flag: false,
-    tokens: tokens,
-    data: await removePassword(user),
-    message: "Log In Success...",
-  };
-};
+//   return {
+//     flag: false,
+//     tokens: tokens,
+//     data: await removePassword(user),
+//     message: "Log In Success...",
+//   };
+// };
 
 export const loginServiceForUser = async (
   username: string,
@@ -307,27 +178,27 @@ export const loginServiceForUser = async (
     };
   }
 
-  if (!isGoogle) {
-    const isPasswordMatch = await checkPasswordCorrect(
-      password,
-      user.password!
-    );
-    if (!isPasswordMatch) {
-      return {
-        flag: true,
-        message: `Incorrect Password...`,
-      };
-    }
-  }
-  let tokens: Tokens = {
-    token: await generateJwtToken(user),
-    refreshToken: await generateRefreshToken(user),
-  };
+  // if (!isGoogle) {
+  //   const isPasswordMatch = await checkPasswordCorrect(
+  //     password,
+  //     user.password!
+  //   );
+  //   if (!isPasswordMatch) {
+  //     return {
+  //       flag: true,
+  //       message: `Incorrect Password...`,
+  //     };
+  //   }
+  // }
+  // let tokens: Tokens = {
+  //   token: await generateJwtToken(user),
+  //   refreshToken: await generateRefreshToken(user),
+  // };
 
   return {
     flag: false,
-    tokens: tokens,
-    data: await removePassword(user),
+    // tokens: tokens,
+    data: user,
     message: "Log In Success...",
   };
 };
@@ -373,9 +244,9 @@ export const getCompleteUserDetailsService = async (userId: string) => {
         id: true,
         email: true,
         username: true,
-        fullname: true,
+        // fullname: true,
         mobileNo: true,
-        image: true,
+        imageUrl: true,
         role: true,
         userAddress: {
           include: {},
@@ -387,9 +258,9 @@ export const getCompleteUserDetailsService = async (userId: string) => {
       ? { ...userDetails, signedUrl: "" }
       : null;
 
-    if (userWithSignedUrl?.image) {
+    if (userWithSignedUrl?.imageUrl) {
       userWithSignedUrl.signedUrl = await getSignedForImagesUsingCloudFront(
-        userWithSignedUrl.image
+        userWithSignedUrl.imageUrl
       );
     }
 
@@ -419,9 +290,9 @@ export async function updateUserDetailsService(
       where: { id }, // Update based on unique ID
       data: {
         email: email,
-        fullname: fullname,
+        // fullname: fullname,
         mobileNo: mobileNo,
-        image: filename,
+        imageUrl: filename,
       },
     });
 
@@ -526,7 +397,7 @@ export const getUserAddressFromUserId = async (userId: string) => {
         user : {
           select : {
             username : true,
-            fullname : true,
+            // fullname : true,
           }
         }
       }
@@ -552,11 +423,11 @@ export const getAllUsersService = async () => {
       select: {
         id: true,
         username: true,
-        fullname: true,
+        // fullname: true,
         mobileNo: true,
         email: true,
         role: true,
-        image: true,
+        imageUrl: true,
         isDeleted: true,
         updatedDatetime: true,
       }

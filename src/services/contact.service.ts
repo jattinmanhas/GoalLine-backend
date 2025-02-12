@@ -57,7 +57,7 @@ export const searbhProductsCategoriesService = async (query: string) => {
           },
           creator: {
             select: {
-              fullname: true,
+              firstname: true,
             },
           },
         },
@@ -73,7 +73,7 @@ export const searbhProductsCategoriesService = async (query: string) => {
         include: {
           author: {
             select: {
-              fullname: true,
+              firstname: true,
             },
           },
           category: {

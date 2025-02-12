@@ -1,66 +1,66 @@
 import { NextFunction, Request, Response } from "express";
 import { asyncHander } from "../../../utils/handlers/asyncHander";
-import {
-  createUser,
-  createUserAuthSettings, getAllUsersCountService, getAllUsersService,
-  loginServiceforAdmin,
-} from "../../../services/auth.services";
-import { Role } from "@prisma/client";
-import { usernameExists, emailExists, isEmail } from "../../../utils/common";
-import client from "../../../config/redisClient";
 import { ApiError } from "../../../utils/handlers/apiError";
 import { ApiResponse } from "../../../utils/handlers/apiResponse";
+import { createAdminUser, loginServiceforAdmin } from "../../../services/authServices/admin.auth.services";
+import client from "../../../config/redisClient";
 
-export const login = asyncHander(async (req: Request, res: Response) => {
-  const username = req.body.username;
-  const email = req.body.email;
-  const password = req.body.password;
+/**
+ * @description : Admin Login
+ * @param {Object} req : request for login
+ * @param {Object} res : response for login
+ * @return {Object} : response for login {status, message, data}
+ */
+
+export const Adminlogin = asyncHander(async (req: Request, res: Response) => {
+  const {username, email, password} = req.body;
   let mail = false;
 
   if (!username && email) {
     mail = true;
-    const emailExist: boolean = await emailExists(email);
-    if (!emailExist) {
-      throw new ApiError(404, "User not found ...");
-    }
-  } else if (username && !email) {
-    const usernameExist: boolean = await usernameExists(username);
-    if (!usernameExist) {
-      throw new ApiError(404, "User not found ...");
-    }
-  } else {
-    throw new ApiError(404, "Username and Email Not found...");
   }
 
-  const user = await loginServiceforAdmin(
-    mail ? email : username,
-    password,
-    Role.ADMIN,
-    mail
-  );
+  const user = await loginServiceforAdmin(mail ? email : username, password);
+
   if (user.flag) {
-    return res.status(400).json({ message: user.message });
+    throw new ApiError(400, user.message, [{ message: user.message, field: "Prisma Login User Operation" }], null);
   }
 
-  // set tokens to the cookies
-  const refreshToken = user.tokens?.refreshToken;
-  const userId = user.data?.id;
+  res.cookie("access_token", user.data?.accessToken, {
+    httpOnly: true,
+    secure: false,
+    sameSite: "none",
+    path: "/",
+    expires: new Date(Date.now() + 1000 * 60 * 15), // 15 minutes
+  });
 
-  if (refreshToken && userId) {
-    await client.set(userId, refreshToken, {
-      EX: 86400,
-    });
-  } else {
-    throw new ApiError(400, "User ID not Found in the Database...");
-  }
+  res.cookie("user_ref", user.data?.user.id, {
+    httpOnly: true,
+    secure: false,
+    sameSite: "none",
+    path: "/",
+    expires: new Date(Date.now() + 1000 * 60 * 60 * 24), // 1 day
+  });
 
-  if ("tokens" in user && user.tokens) {
-    delete user.tokens.refreshToken;
-  }
+  if (!user.data?.user.id || !user.data.refreshToken) {
+    throw new ApiError(400, "User Id and Token not found", [{ message: "User Id and Token not found", field: "Prisma Login User Operation" }], null);
+  }  
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, user, "Admin Login Success"));
+  await client.set(user.data?.user.id, user.data?.refreshToken, {
+    EX: 60 * 60 * 24,
+  }); // 1 day
+
+  const userData = {
+    id: user.data.user.id,
+    username: user.data.user.username,
+    email: user.data.user.email,
+    roleId: user.data.user.roleId,
+    firstName: user.data.user.firstname,
+    middleName: user.data.user.middleName,
+    lastName: user.data.user.lastname,
+   };
+
+  return res.status(200).json(new ApiResponse(200, userData, "Admin Login Success"));
 });
 
 /**
@@ -71,56 +71,52 @@ export const login = asyncHander(async (req: Request, res: Response) => {
  */
 
 export const register = asyncHander(async (req: Request, res: Response) => {
-  const username = req.body.username;
-  const email = req.body.email;
-  const password = req.body.password;
-  const fullname = req.body.fullname;
+  const {username, email, firstName, middleName, lastName, roleId, password} = req.body;
 
-  const usernameExist: boolean = await usernameExists(username);
-  if (usernameExist) {
-    return res.status(400).json({ message: "Username Already Exists..." });
-  }
-  const emailExist: boolean = await emailExists(email);
-  if (emailExist) {
-    return res.status(400).json({ message: "Email already exists..." });
-  }
-
-  const user = await createUser(
-    username,
-    email,
-    password,
-    fullname,
-    Role.ADMIN
-  );
+  const user = await createAdminUser(username, email, password, firstName, middleName, lastName, roleId);
   if (user.flag) {
-    return res.status(400).json({ message: user.message });
-  }
-
-  const userAuth = await createUserAuthSettings(user.data?.id!);
-
-  if (userAuth.flag) {
-    return res.status(400).json({ message: userAuth.message });
+    throw new ApiError(400, user.message, [{ message: user.message, field: "Prisma DB Operation" }], null);
   }
 
   return res
     .status(200)
-    .json({ data: user.data, message: "ADMIN User created successfully..." });
+    .json(new ApiResponse(200, user.data, user.message));
+});
+
+/**
+ * @description : Admin Logout
+ * @param {Object} req : request for logout
+ * @param {Object} res : response for logout
+ * @return {Object} : response for logout {status, message, data}
+ */
+export const logoutAdmin = asyncHander(async (req: Request, res: Response) => {
+  const user_ref = req.cookies.user_ref;
+  if (!user_ref) {
+    throw new ApiError(400, "No Reference token found");
+  }
+
+  res.clearCookie("access_token");
+  res.clearCookie("user_ref");
+
+  await client.del(user_ref);
+
+  return res.status(200).json(new ApiResponse(200, null, "Logout Success"));
 });
 
 export const getAllUsers = asyncHander(async (req: Request, res: Response) => {
-    const users = await getAllUsersService();
-    if(users.flag){
-      throw new ApiError(400, users.message);
-    }
+    // const users = await getAllUsersService();
+    // if(users.flag){
+    //   throw new ApiError(400, users.message);
+    // }
 
-    return res.status(200).json(new ApiResponse(200, users.data, users.message));
+    // return res.status(200).json(new ApiResponse(200, users.data, users.message));
 })
 
 export const getAllUsersCount = asyncHander(async (req: Request, res: Response) => {
-    const userCount = await getAllUsersCountService();
-    if(userCount.flag){
-      throw new ApiError(400, userCount.message);
-    }
+    // const userCount = await getAllUsersCountService();
+    // if(userCount.flag){
+    //   throw new ApiError(400, userCount.message);
+    // }
 
-    return res.status(200).json(new ApiResponse(200, userCount.data, userCount.message));
+    // return res.status(200).json(new ApiResponse(200, userCount.data, userCount.message));
 })

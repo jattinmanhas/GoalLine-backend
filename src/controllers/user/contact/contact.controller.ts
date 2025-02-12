@@ -43,16 +43,16 @@ export const searchProductsBlogs = asyncHander(
     });
 
     // Update products with signed URLs
-    if (search.data?.products) {
-      for (const product of search.data.products) {
-        product.images = await Promise.all(
-          product.images.map(async (image) => ({
-            ...image,
-            imageName: await getSignedForImagesUsingCloudFront(image.imageName),
-          }))
-        );
-      }
-    }
+    // if (search.data?.products) {
+    //   for (const product of search.data.products) {
+    //     product.images = await Promise.all(
+    //       product.images.map(async (image) => ({
+    //         ...image,
+    //         imageName: await getSignedForImagesUsingCloudFront(image.imageName),
+    //       }))
+    //     );
+    //   }
+    // }
     return res
       .status(200)
       .json(new ApiResponse(200, search.data, search.message));

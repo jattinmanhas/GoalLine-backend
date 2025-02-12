@@ -131,7 +131,7 @@ export const getAllCategoriesService = async (skip: number, take: number) => {
         },
         creator: {
           select: {
-            fullname: true,
+            firstname: true,
           },
         },
       },
@@ -171,7 +171,7 @@ export const getAllProductsService = async (skip: number, take: number) => {
         },
         creator: {
           select: {
-            fullname: true,
+            firstname: true,
           },
         },
       },
@@ -220,7 +220,7 @@ export const getSingleProductService = async (id: string) => {
         creator: {
           select: {
             username: true,
-            fullname: true,
+            firstname: true,
           },
         },
       },
@@ -298,7 +298,7 @@ export const searchProductsService = async (
         creator: {
           select: {
             username: true,
-            fullname: true,
+            firstname: true,
           },
         },
       },
@@ -610,7 +610,7 @@ export const getAllProductInCategoryService = async (
         creator: {
           select: {
             username: true,
-            fullname: true,
+            firstname: true,
           },
         },
       },

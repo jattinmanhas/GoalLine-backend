@@ -3,7 +3,6 @@ import { asyncHander } from "../../../utils/handlers/asyncHander";
 import {
   createUser,
   createUserAddressService,
-  createUserAuthSettings,
   getCompleteUserDetailsService,
   getUser,
   getUserAddressFromUserId,
@@ -13,8 +12,6 @@ import {
   updateUserAddressService,
   updateUserDetailsService,
 } from "../../../services/auth.services";
-import { Role } from "@prisma/client";
-import { emailExists, usernameExists } from "../../../utils/common";
 import { ApiError } from "../../../utils/handlers/apiError";
 import { ApiResponse } from "../../../utils/handlers/apiResponse";
 import client from "../../../config/redisClient";
@@ -23,102 +20,102 @@ import { UserPayload } from "../../../types/index.types";
 import { uploadFileToS3 } from "../../../services/s3Service";
 
 export const userLogin = asyncHander(async (req: Request, res: Response) => {
-  const username = req.body.username;
-  const email = req.body.email;
-  const password = req.body.password;
-  let mail = false;
+  // const username = req.body.username;
+  // const email = req.body.email;
+  // const password = req.body.password;
+  // let mail = false;
 
-  if (!username && email) {
-    mail = true;
-    const emailExist: boolean = await emailExists(email);
-    if (!emailExist) {
-      throw new ApiError(404, "User not found");
-    }
-  } else if (username && !email) {
-    const usernameExist: boolean = await usernameExists(username);
-    if (!usernameExist) {
-      throw new ApiError(404, "User not found");
-    }
-  } else {
-    throw new ApiError(404, "Username and Email not found");
-  }
+  // if (!username && email) {
+  //   mail = true;
+  //   const emailExist: boolean = await emailExists(email);
+  //   if (!emailExist) {
+  //     throw new ApiError(404, "User not found");
+  //   }
+  // } else if (username && !email) {
+  //   const usernameExist: boolean = await usernameExists(username);
+  //   if (!usernameExist) {
+  //     throw new ApiError(404, "User not found");
+  //   }
+  // } else {
+  //   throw new ApiError(404, "Username and Email not found");
+  // }
 
-  const user = await loginServiceForUser(
-    mail ? email : username,
-    password,
-    Role.USER,
-    mail
-  );
-  if (user.flag) {
-    throw new ApiError(400, user.message);
-  }
+  // const user = await loginServiceForUser(
+  //   mail ? email : username,
+  //   password,
+  //   Role.USER,
+  //   mail
+  // );
+  // if (user.flag) {
+  //   throw new ApiError(400, user.message);
+  // }
 
-  // set tokens to the cookies
-  const refreshToken = user.tokens?.refreshToken;
-  const userId = user.data?.id;
+  // // set tokens to the cookies
+  // const refreshToken = user.tokens?.refreshToken;
+  // const userId = user.data?.id;
 
-  if (refreshToken && userId) {
-    await client.set(userId, refreshToken, {
-      EX: 86400,
-    });
-  } else {
-    throw new ApiError(400, "User ID not Found in the Database...");
-  }
+  // if (refreshToken && userId) {
+  //   await client.set(userId, refreshToken, {
+  //     EX: 86400,
+  //   });
+  // } else {
+  //   throw new ApiError(400, "User ID not Found in the Database...");
+  // }
 
-  if ("tokens" in user && user.tokens) {
-    delete user.tokens.refreshToken;
-  }
+  // if ("tokens" in user && user.tokens) {
+  //   delete user.tokens.refreshToken;
+  // }
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, user, "Login Successful..."));
+  // return res
+  //   .status(200)
+  //   .json(new ApiResponse(200, user, "Login Successful..."));
 });
 
 export const userRegistration = asyncHander(
   async (req: Request, res: Response) => {
-    const username = req.body.username;
-    const email = req.body.email;
-    const password = req.body.password;
-    const fullname = req.body.fullname;
+    // const username = req.body.username;
+    // const email = req.body.email;
+    // const password = req.body.password;
+    // const fullname = req.body.fullname;
 
-    const usernameExist: boolean = await usernameExists(username);
-    if (usernameExist) {
-      throw new ApiError(400, "Username Already Exists...");
-    }
+    // const usernameExist: boolean = await usernameExists(username);
+    // if (usernameExist) {
+    //   throw new ApiError(400, "Username Already Exists...");
+    // }
 
-    const emailExist: boolean = await emailExists(email);
-    if (emailExist) {
-      throw new ApiError(400, "Email Already Exists");
-    }
+    // const emailExist: boolean = await emailExists(email);
+    // if (emailExist) {
+    //   throw new ApiError(400, "Email Already Exists");
+    // }
 
-    const user = await createUser(
-      username,
-      email,
-      password,
-      fullname,
-      Role.USER
-    );
+    // const user = await createUser(
+    //   username,
+    //   email,
+    //   password,
+    //   fullname,
+    //   Role.USER
+    // );
 
-    if (user.flag) {
-      throw new ApiError(400, user.message as string);
-    }
+    // if (user.flag) {
+    //   throw new ApiError(400, user.message as string);
+    // }
 
-    const userAuth = await createUserAuthSettings(user.data?.id!);
+    // const userAuth = await createUserAuthSettings(user.data?.id!);
 
-    if (userAuth.flag) {
-      throw new ApiError(400, userAuth.message as string);
-    }
+    // if (userAuth.flag) {
+    //   throw new ApiError(400, userAuth.message as string);
+    // }
 
-    const userReturn: UserPayload = {
-      id : user.data?.id!,
-      username: user.data?.username!,
-      email: user.data?.email!,
-      role: user.data?.role,
-    }
+    // const userReturn: UserPayload = {
+    //   id : user.data?.id!,
+    //   username: user.data?.username!,
+    //   email: user.data?.email!,
+    //   role: user.data?.role,
+    // }
 
-    return res
-      .status(200)
-      .json(new ApiResponse(200, userReturn, "New User Created Successfully..."));
+    // return res
+    //   .status(200)
+    //   .json(new ApiResponse(200, userReturn, "New User Created Successfully..."));
   }
 );
 
@@ -213,50 +210,50 @@ export const userLogout = asyncHander(async (req: Request, res: Response) => {
 
 export const googleLoginForUser = asyncHander(
   async (req: Request, res: Response, next: NextFunction) => {
-    const email = req.body.email;
-    const name = req.body.name;
-    const password = "";
+    // const email = req.body.email;
+    // const name = req.body.name;
+    // const password = "";
 
-    let userData = await getUser(email, false, "email", Role.USER);
-    if (!userData) {
-      let username = email.split("@")[0];
-      const user = await createUser(username, email, password, name, Role.USER);
+    // let userData = await getUser(email, false, "email", Role.USER);
+    // if (!userData) {
+    //   let username = email.split("@")[0];
+    //   const user = await createUser(username, email, password, name, Role.USER);
 
-      if (user.flag) {
-        throw new ApiError(400, "Failed to create New user");
-      }
-    }
+    //   if (user.flag) {
+    //     throw new ApiError(400, "Failed to create New user");
+    //   }
+    // }
 
-    const user = await loginServiceForUser(
-      email,
-      password,
-      Role.USER,
-      true,
-      true
-    );
-    if (user.flag) {
-      throw new ApiError(400, user.message);
-    }
+    // const user = await loginServiceForUser(
+    //   email,
+    //   password,
+    //   Role.USER,
+    //   true,
+    //   true
+    // );
+    // if (user.flag) {
+    //   throw new ApiError(400, user.message);
+    // }
 
-    // set tokens to the cookies
-    const refreshToken = user.tokens?.refreshToken;
-    const userId = user.data?.id;
+    // // set tokens to the cookies
+    // const refreshToken = user.tokens?.refreshToken;
+    // const userId = user.data?.id;
 
-    if (refreshToken && userId) {
-      await client.set(userId, refreshToken, {
-        EX: 86400,
-      });
-    } else {
-      throw new ApiError(400, "User ID not Found in the Database...");
-    }
+    // if (refreshToken && userId) {
+    //   await client.set(userId, refreshToken, {
+    //     EX: 86400,
+    //   });
+    // } else {
+    //   throw new ApiError(400, "User ID not Found in the Database...");
+    // }
 
-    if ("tokens" in user && user.tokens) {
-      delete user.tokens.refreshToken;
-    }
+    // if ("tokens" in user && user.tokens) {
+    //   delete user.tokens.refreshToken;
+    // }
 
-    return res
-      .status(200)
-      .json(new ApiResponse(200, user, "Login Successful..."));
+    // return res
+    //   .status(200)
+    //   .json(new ApiResponse(200, user, "Login Successful..."));
   }
 );
 
