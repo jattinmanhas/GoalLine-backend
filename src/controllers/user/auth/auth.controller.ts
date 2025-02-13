@@ -11,7 +11,7 @@ import {
   renewTokens,
   updateUserAddressService,
   updateUserDetailsService,
-} from "../../../services/auth.services";
+} from "../../../services/authServices/auth.services";
 import { ApiError } from "../../../utils/handlers/apiError";
 import { ApiResponse } from "../../../utils/handlers/apiResponse";
 import client from "../../../config/redisClient";
@@ -20,193 +20,100 @@ import { UserPayload } from "../../../types/index.types";
 import { uploadFileToS3 } from "../../../services/s3Service";
 
 export const userLogin = asyncHander(async (req: Request, res: Response) => {
-  // const username = req.body.username;
-  // const email = req.body.email;
-  // const password = req.body.password;
-  // let mail = false;
+  const {username, email, password} = req.body;
+  
+  let mail = false;
 
-  // if (!username && email) {
-  //   mail = true;
-  //   const emailExist: boolean = await emailExists(email);
-  //   if (!emailExist) {
-  //     throw new ApiError(404, "User not found");
-  //   }
-  // } else if (username && !email) {
-  //   const usernameExist: boolean = await usernameExists(username);
-  //   if (!usernameExist) {
-  //     throw new ApiError(404, "User not found");
-  //   }
-  // } else {
-  //   throw new ApiError(404, "Username and Email not found");
-  // }
+  if (!username && email) {
+    mail = true;
+  }
 
-  // const user = await loginServiceForUser(
-  //   mail ? email : username,
-  //   password,
-  //   Role.USER,
-  //   mail
-  // );
-  // if (user.flag) {
-  //   throw new ApiError(400, user.message);
-  // }
+  const user = await loginServiceForUser(
+    mail ? email : username,
+    password  
+  );
 
-  // // set tokens to the cookies
-  // const refreshToken = user.tokens?.refreshToken;
-  // const userId = user.data?.id;
+  if (user.flag) {
+    throw new ApiError(400, user.message, [{ message: user.message, field: "Prisma Login User Operation" }], null);
+  }
 
-  // if (refreshToken && userId) {
-  //   await client.set(userId, refreshToken, {
-  //     EX: 86400,
-  //   });
-  // } else {
-  //   throw new ApiError(400, "User ID not Found in the Database...");
-  // }
+  res.cookie("access_token", user.tokens?.token, {
+    httpOnly: true,
+    secure: false,
+    sameSite: "none",
+    path: "/",
+    expires: new Date(Date.now() + 1000 * 60 * 15), // 15 minutes
+  });
 
-  // if ("tokens" in user && user.tokens) {
-  //   delete user.tokens.refreshToken;
-  // }
+  res.cookie("user_ref", user.data?.id, {
+    httpOnly: true,
+    secure: false,
+    sameSite: "none",
+    path: "/",
+    expires: new Date(Date.now() + 1000 * 60 * 60 * 24), // 1 day
+  });
 
-  // return res
-  //   .status(200)
-  //   .json(new ApiResponse(200, user, "Login Successful..."));
+  if (!user.data?.id || !user.tokens.refreshToken) {
+    throw new ApiError(400, "User Id and Token not found", [{ message: "User Id and Token not found", field: "Prisma Login User Operation" }], null);
+  }  
+
+  await client.set(user.data?.id, user.tokens.refreshToken, {
+    EX: 60 * 60 * 24,
+  }); // 1 day
+
+  const userData = {
+    id: user.data.id,
+    username: user.data.username,
+    email: user.data.email,
+    roleId: user.data.roleId,
+    firstName: user.data.firstname,
+    middleName: user.data.middleName,
+    lastName: user.data.lastname,
+   };
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, userData, "Login Successful..."));
 });
 
 export const userRegistration = asyncHander(
   async (req: Request, res: Response) => {
-    // const username = req.body.username;
-    // const email = req.body.email;
-    // const password = req.body.password;
-    // const fullname = req.body.fullname;
+    const {username, email, firstName, middleName, lastName, roleId, password} = req.body;
 
-    // const usernameExist: boolean = await usernameExists(username);
-    // if (usernameExist) {
-    //   throw new ApiError(400, "Username Already Exists...");
-    // }
-
-    // const emailExist: boolean = await emailExists(email);
-    // if (emailExist) {
-    //   throw new ApiError(400, "Email Already Exists");
-    // }
-
-    // const user = await createUser(
-    //   username,
-    //   email,
-    //   password,
-    //   fullname,
-    //   Role.USER
-    // );
-
-    // if (user.flag) {
-    //   throw new ApiError(400, user.message as string);
-    // }
-
-    // const userAuth = await createUserAuthSettings(user.data?.id!);
-
-    // if (userAuth.flag) {
-    //   throw new ApiError(400, userAuth.message as string);
-    // }
-
-    // const userReturn: UserPayload = {
-    //   id : user.data?.id!,
-    //   username: user.data?.username!,
-    //   email: user.data?.email!,
-    //   role: user.data?.role,
-    // }
-
-    // return res
-    //   .status(200)
-    //   .json(new ApiResponse(200, userReturn, "New User Created Successfully..."));
-  }
-);
-
-export const getUserDetailsFromToken = asyncHander(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const token = req.headers.authorization?.split(" ")[1];
-
-    if (!token) {
-      throw new ApiError(401, "No Token Found");
-    }
-
-    const user = await getUserFromToken(
-      token,
-      process.env.CLIENT_SECRET as string
+    const user = await createUser(
+      username,
+      email,
+      password,
+      firstName,
+      middleName,
+      lastName,
+      roleId
     );
 
-    if (!user) {
-      throw new ApiError(401, "Invalid Token");
+    if (user.flag) {
+      throw new ApiError(400, user.message, [{ message: user.message, field: "Prisma DB Operation" }], null);
     }
-
+    
     return res
       .status(200)
-      .json(
-        new ApiResponse(200, user, "User Details Verified Successfully...")
-      );
+      .json(new ApiResponse(200, user, "New User Created Successfully..."));
   }
 );
 
-export const renewRefreshToken = asyncHander(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const tokenId = req.body.refreshId;
-    if (!tokenId) {
-      throw new ApiError(404, "Token Id not Found");
-    }
-
-    const refreshToken = await client.get(tokenId);
-
-    if (!refreshToken) {
-      throw new ApiError(401, "No Refresh Token Found");
-    }
-
-    const user = decode(refreshToken) as UserPayload;
-
-    const data = await renewTokens(user);
-
-    const newRefreshToken = data.tokens?.refreshToken;
-    const userId = data.data?.id;
-
-    if (newRefreshToken && userId) {
-      await client.set(userId, refreshToken, {
-        EX: 86400,
-      });
-    } else {
-      throw new ApiError(400, "User ID not Found in the Database...");
-    }
-
-    if (data.flag) {
-      throw new ApiError(401, data.message as string);
-    }
-
-    if ("tokens" in data && data.tokens) {
-      delete data.tokens.refreshToken;
-    }
-
-    return res
-      .status(200)
-      .json(new ApiResponse(200, data, data.message as string));
-  }
-);
-
-export const checkPassportJWT = asyncHander(
-  async (req: Request, res: Response) => {
-    return res
-      .status(200)
-      .json(new ApiResponse(200, "", "JWT USER TOKEN Success"));
-  }
-);
-
-export const userLogout = asyncHander(async (req: Request, res: Response) => {
-  const key = req.body.value;
-
-  if (!key) {
-    throw new ApiError(400, "Failed to find UserId to logout.");
+export const logoutUser = asyncHander(async (req: Request, res: Response) => {
+  const user_ref = req.cookies.user_ref;
+  if (!user_ref) {
+    throw new ApiError(400, "No Reference token found");
   }
 
-  await client.del(key);
+  res.clearCookie("access_token");
+  res.clearCookie("user_ref");
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, null, "User Logout Success..."));
+  await client.del(user_ref);
+
+  return res.status(200).json(new ApiResponse(200, null, "User Logout Success"));
 });
+
 
 export const googleLoginForUser = asyncHander(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -268,6 +175,11 @@ export const getCompleteUserDetails = asyncHander(
 
     if (userDetails.flag) {
       throw new ApiError(400, userDetails.message);
+    }
+
+    const { id } = req.user as UserPayload;
+    if(id !== userId && userDetails.data?.role.name !== "ADMIN"){
+      throw new ApiError(403, "Unauthorized", [{message: "Unauthorized to access other's details", field: "User Details"}], null);
     }
 
     return res
@@ -349,18 +261,18 @@ export const updateUserDetailsWithAddress = asyncHander(
   }
 );
 
-
 export const getUserAddressDetails = asyncHander(
   async (req: Request, res: Response, next: NextFunction) => {
-    const userId = req.params.userId;
-    if (!userId) {
-      throw new ApiError(404, "User Id Not Found...");
+    const { id } = req.user as UserPayload;
+    
+    if (!id) {
+      throw new ApiError(401, "User Not logged In...");
     }
 
-    const userDetails = await getUserAddressFromUserId(userId);
+    const userDetails = await getUserAddressFromUserId(id);
 
     if (userDetails.flag) {
-      throw new ApiError(400, userDetails.message);
+      throw new ApiError(400, userDetails.message, [{ message: userDetails.message, field: "Prisma DB Operation" }], null);
     }
 
     return res

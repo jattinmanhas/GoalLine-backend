@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
 import { ApiError } from "../utils/handlers/apiError";
-import { time } from "console";
 
 export const errorHandlerMiddleware = (
   err: ApiError,

@@ -1,7 +1,7 @@
 import { ReturnPayload } from "../../types/index.types";
 import bcrypt from "bcrypt";
 import prisma from "../../config/prismaConfig";
-import { generateRefreshTokenForAdmin, genereateAccessTokenForAdmin } from "../../utils/auth/tokens";
+import { generateRefreshToken, generateAccessToken } from "../../utils/auth/tokens";
 
 export const createAdminUser = async (
   username: string,
@@ -51,6 +51,13 @@ export const loginServiceforAdmin = async (
       where: {
         OR: [{ username: username }, { email: username }],
       },
+      include : {
+        role: {
+          select: {
+            name : true
+          }
+        }
+      }
     });
 
     if (!user) {
@@ -58,6 +65,14 @@ export const loginServiceforAdmin = async (
         flag: true,
         data: null,
         message: "User not found",
+      };
+    }
+
+    if(user.role.name !== "ADMIN"){
+      return {
+        flag: true,
+        data: null,
+        message: "Invalid Role",
       };
     }
 
@@ -71,13 +86,13 @@ export const loginServiceforAdmin = async (
       };
     }
 
-    const accessToken = genereateAccessTokenForAdmin(user);
-    const refreshToken = await generateRefreshTokenForAdmin(user);
+    const accessToken = await generateAccessToken(user);
+    const refreshToken = await generateRefreshToken(user);
 
     return {
       flag: false,
       data: {user, accessToken, refreshToken},
-      message: "Login Success",
+      message: "Admin Login Success",
     };
   } catch (error) {
     return {
@@ -87,3 +102,53 @@ export const loginServiceforAdmin = async (
     };
   }
 };
+
+export const getAllUsersCountService = async () => {
+  try{
+    const users = await prisma.user.count();
+
+    return {
+      flag: false,
+      data: users,
+      message: "Successfully Fetched Users Count",
+    }
+  }catch (error) {
+    return {
+      flag: true,
+      data: null,
+      message: "Failed to Fetch Users Count", error
+    }
+  }
+}
+
+export const getAllUsersService = async () => {
+  try{
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        firstname: true,
+        middleName: true,
+        lastname: true,
+        mobileNo: true,
+        email: true,
+        imageUrl: true,
+        isDeleted: true,
+        updatedDatetime: true,
+        role: true
+      }
+    })
+
+    return {
+      flag: false,
+      data: users,
+      message: "Successfully Fetched All Users",
+    }
+  }catch(error){
+    return {
+      flag: true,
+      data: null,
+      message: "Failed to Fetch All Users " + error,
+    }
+  }
+}

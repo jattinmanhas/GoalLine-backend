@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { asyncHander } from "../../../utils/handlers/asyncHander";
 import { ApiError } from "../../../utils/handlers/apiError";
 import { ApiResponse } from "../../../utils/handlers/apiResponse";
-import { createAdminUser, loginServiceforAdmin } from "../../../services/authServices/admin.auth.services";
+import { createAdminUser, getAllUsersCountService, loginServiceforAdmin, getAllUsersService } from "../../../services/authServices/admin.auth.services";
 import client from "../../../config/redisClient";
 
 /**
@@ -100,23 +100,36 @@ export const logoutAdmin = asyncHander(async (req: Request, res: Response) => {
 
   await client.del(user_ref);
 
-  return res.status(200).json(new ApiResponse(200, null, "Logout Success"));
+  return res.status(200).json(new ApiResponse(200, null, "Admin Logout Success"));
 });
 
+/**
+ * @description : Admin Get All Users
+ * @param {Object} req : request to fetch all users
+ * @param {Object} res : response after fetching all users
+ * @return {Object} : response after fetching all users {status, message, data}
+ */
 export const getAllUsers = asyncHander(async (req: Request, res: Response) => {
-    // const users = await getAllUsersService();
-    // if(users.flag){
-    //   throw new ApiError(400, users.message);
-    // }
+    const users = await getAllUsersService();
+    if(users.flag){
+      throw new ApiError(400, users.message);
+    }
 
-    // return res.status(200).json(new ApiResponse(200, users.data, users.message));
+    return res.status(200).json(new ApiResponse(200, users.data, users.message));
 })
 
-export const getAllUsersCount = asyncHander(async (req: Request, res: Response) => {
-    // const userCount = await getAllUsersCountService();
-    // if(userCount.flag){
-    //   throw new ApiError(400, userCount.message);
-    // }
 
-    // return res.status(200).json(new ApiResponse(200, userCount.data, userCount.message));
+/**
+ * @description : Admin Get All Users Count
+ * @param {Object} req : request to fetch all users count
+ * @param {Object} res : response after fetching all users count
+ * @return {Object} : response after fetching all users count {status, message, data}
+ */
+export const getAllUsersCount = asyncHander(async (req: Request, res: Response) => {
+    const userCount = await getAllUsersCountService();
+    if(userCount.flag){
+      throw new ApiError(400, userCount.message);
+    }
+
+    return res.status(200).json(new ApiResponse(200, userCount.data, userCount.message));
 })
